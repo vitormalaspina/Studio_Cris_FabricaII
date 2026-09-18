@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio Cris — Gerenciamento de Estoque</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#0b0b0b; --panel:#151515; --card:#1a1a1a; --card-border:#2c2c2c;
+    --gold:#d4af37; --gold-dark:#8a6d1f;
+    --gold-grad: linear-gradient(135deg,#f6e27a 0%,#d4af37 40%,#a9791a 100%);
+    --text:#f2ede2; --text-dim:#b9b3a6; --danger:#d64545;
+    --radius:10px; --input-bg:#dcdcdc; --input-text:#1a1a1a;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Poppins',sans-serif;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer}
+  .app{display:flex;min-height:100vh}
+  .app[hidden]{display:none}
+
+  /* ---------- LOGIN ---------- */
+  .login-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 30%,#141414 0%,#070707 70%);z-index:200}
+  .login-screen[hidden]{display:none}
+  .login-box{width:360px;max-width:92vw;background:var(--panel);border:1px solid #262626;border-radius:14px;padding:36px 34px 32px;box-shadow:0 18px 50px rgba(0,0,0,.6)}
+  .login-box .logo{align-items:center;text-align:center;margin-bottom:26px}
+  .login-box .field{margin-bottom:14px}
+  .login-error{color:#e08585;font-size:12.5px;min-height:17px;margin:4px 0 8px;text-align:center}
+  .login-hint{font-size:11.5px;color:var(--text-dim);text-align:center;margin-top:16px;line-height:1.5}
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{width:250px;flex-shrink:0;background:linear-gradient(180deg,#0e0e0e 0%,#070707 100%);border-right:1px solid #1f1f1f;display:flex;flex-direction:column;padding:26px 18px}
+  .logo{display:flex;flex-direction:column;line-height:.85;margin-bottom:30px;padding:0 6px}
+  .logo .top{font-size:13px;letter-spacing:6px;font-weight:600;background:var(--gold-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .logo .cris{font-family:'Dancing Script',cursive;font-size:46px;font-weight:700;background:var(--gold-grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:2px}
+  .nav{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+  .nav-btn{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius);border:1px solid transparent;background:transparent;color:var(--text-dim);font-size:15px;font-weight:500;text-align:left;transition:background .15s,color .15s}
+  .nav-btn:hover{background:#1c1c1c;color:var(--text)}
+  .nav-btn.active{background:linear-gradient(90deg,#2a2210,#171106);border-color:var(--gold-dark);color:var(--gold)}
+  .nav-btn .ic{width:18px;height:18px;flex-shrink:0}
+  .sidebar-footer{margin-top:auto}
+  .sidebar-divider{height:1px;background:#232323;margin:18px 0 14px}
+  .user-profile{font-size:14px;color:var(--text);margin:0 0 2px 6px;font-weight:500}
+  .user-role{font-size:11.5px;color:var(--gold);margin:0 0 10px 6px;text-transform:uppercase;letter-spacing:1px}
+  .logout-btn{display:flex;align-items:center;gap:10px;background:none;border:none;color:var(--text-dim);font-size:14px;padding:8px 6px;border-radius:8px;width:100%}
+  .logout-btn:hover{color:var(--text);background:#1a1a1a}
+
+  /* ---------- Content ---------- */
+  .content{flex:1;padding:32px 36px;overflow-y:auto}
+  .page{display:none}
+  .page.visible{display:block}
+  .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+  .page-title{font-size:22px;font-weight:600;margin:0}
+  .page-subtitle{font-size:13px;color:var(--text-dim);margin-top:4px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,170px));gap:22px}
+
+  /* ---------- Cards ---------- */
+  .card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);overflow:hidden;position:relative;display:flex;flex-direction:column}
+  .card .thumb{height:100px;background:#0f0f0f;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .card .thumb img{width:100%;height:100%;object-fit:cover}
+  .card .thumb .placeholder{color:#3a3a3a;font-size:34px}
+  .card .remove-btn{position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:4px;background:rgba(0,0,0,.55);border:none;color:var(--danger);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;line-height:1}
+  .card .remove-btn:hover{background:rgba(0,0,0,.85)}
+  .card .body{padding:10px 12px 12px;text-align:center}
+  .card .name{font-size:12.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;margin-bottom:6px;border-bottom:1px solid #2a2a2a;padding-bottom:6px}
+  .card .row{font-size:11.5px;color:var(--text-dim);margin:1px 0}
+  .card .row b{color:var(--text);font-weight:600}
+  .card .qty-label{font-size:11px;color:var(--text-dim);margin-top:4px}
+  .card .qty-val{font-size:11.5px;color:var(--text);font-weight:500}
+  .card .qty-val.low{color:#e0a35f}
+  .card .edit-btn{margin-top:9px;width:100%;padding:6px 0;border-radius:6px;border:1px solid #3a3a3a;background:#242424;color:var(--text);font-size:12px;font-weight:500}
+  .card .edit-btn:hover{border-color:var(--gold-dark);color:var(--gold)}
+  .card.service .body{text-align:left}
+  .card.service .name{text-align:center}
+  .card.service .recipe-item{font-size:11px;color:var(--text-dim);display:flex;justify-content:space-between;margin:2px 0}
+  .card.service .recipe-item span:last-child{color:var(--text)}
+  .add-tile{width:60px;height:60px;border-radius:50%;background:#1c1c1c;border:1px solid #2f2f2f;display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:26px;font-weight:300;align-self:flex-start}
+  .add-tile:hover{background:#242424;border-color:var(--gold-dark)}
+  .empty-state{color:var(--text-dim);font-size:13.5px;padding:30px 4px}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.68);display:flex;align-items:center;justify-content:center;z-index:50}
+  .overlay[hidden]{display:none}
+  .modal{background:var(--panel);border:1px solid #2a2a2a;border-radius:12px;width:520px;max-width:92vw;max-height:88vh;overflow-y:auto;padding:28px 34px 30px}
+  .modal.wide{width:600px}
+  .modal h3{text-align:center;font-family:'Dancing Script',cursive;font-size:30px;color:var(--gold);margin:0 0 18px;font-weight:700}
+  .img-upload{width:74px;height:74px;border-radius:10px;background:#101010;border:1px dashed #333;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;color:var(--gold);font-size:26px;overflow:hidden;cursor:pointer}
+  .img-upload img{width:100%;height:100%;object-fit:cover}
+  .img-upload-label{text-align:center;font-size:12px;color:var(--text-dim);margin-bottom:18px}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:13px;font-weight:500;margin-bottom:6px}
+  .field input,.field select{width:100%;padding:9px 12px;border-radius:6px;border:none;background:var(--input-bg);color:var(--input-text);font-size:13.5px;font-family:inherit}
+  .field-row{display:flex;gap:14px}
+  .field-row .field{flex:1}
+  .modal-actions{display:flex;justify-content:center;gap:16px;margin-top:22px}
+  .btn{padding:10px 26px;border-radius:7px;font-size:14px;font-weight:600;border:1px solid #3a3a3a;background:#232323;color:var(--text)}
+  .btn:hover{background:#2c2c2c}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .btn-primary{background:var(--gold-grad);border:none;color:#1c1502}
+  .btn-primary:hover{filter:brightness(1.07)}
+  .btn-small{padding:6px 16px;font-size:12.5px}
+  .recipe-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .recipe-row select{flex:2}
+  .recipe-row input{flex:1;width:auto}
+  .recipe-row select,.recipe-row input{padding:9px 12px;border-radius:6px;border:none;background:var(--input-bg);color:var(--input-text);font-size:13.5px;font-family:inherit}
+  .recipe-row .unit-badge{font-size:12px;color:var(--text-dim);width:30px}
+  .row-remove{background:none;border:none;color:#a55;font-size:16px;font-weight:700;width:22px}
+  .add-row-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--gold);font-size:13px;font-weight:500;padding:4px 0 10px}
+
+  /* ---------- Calcular ---------- */
+  .calc-panel{background:var(--panel);border:1px solid #232323;border-radius:12px;width:600px;max-width:100%;padding:30px 34px 32px}
+  .calc-select-row{display:flex;flex-direction:column;gap:10px;margin-bottom:22px}
+  .calc-select-row label{font-size:13px;font-weight:500}
+  .calc-select-row select{padding:10px 12px;border-radius:6px;border:none;background:var(--input-bg);color:var(--input-text);font-size:13.5px}
+  .calc-step2-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+  .calc-step2-header .service-tag{font-size:13px;color:var(--gold);font-weight:600}
+  .back-link{background:none;border:none;color:var(--text-dim);font-size:13px}
+  .back-link:hover{color:var(--text)}
+  .divider-plus{display:flex;align-items:center;gap:14px;margin:18px 0}
+  .divider-plus .line{flex:1;height:1px;background:#2a2a2a}
+  .labor-row{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+  .labor-row label{font-size:13px;font-weight:500;white-space:nowrap}
+  .labor-row input{flex:1;padding:9px 12px;border-radius:6px;border:none;background:var(--input-bg);color:var(--input-text);font-size:13.5px}
+  .total-box{border-top:1px solid #2a2a2a;padding-top:16px}
+  .breakdown{margin-bottom:14px}
+  .breakdown-row{display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-dim);padding:3px 0}
+  .breakdown-row span:last-child{color:var(--text);font-weight:500}
+  .total-line{display:flex;align-items:center;gap:14px;margin-top:10px}
+  .total-line label{font-weight:600;font-size:15px}
+  .total-line .value{background:var(--input-bg);color:var(--input-text);padding:9px 14px;border-radius:6px;font-weight:700;font-size:14px;flex:1}
+  .confirm-wrap{text-align:center;margin-top:22px}
+
+  /* ---------- Clientes / Comanda ---------- */
+  .search-input{width:100%;max-width:340px;padding:10px 14px;border-radius:8px;border:none;background:var(--input-bg);color:var(--input-text);font-size:13.5px;font-family:inherit;margin-bottom:20px}
+  .client-back{background:none;border:none;color:var(--text-dim);font-size:13px;margin-bottom:14px}
+  .client-back:hover{color:var(--text)}
+  .client-header{background:var(--panel);border:1px solid #232323;border-radius:12px;padding:20px 26px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px}
+  .client-header .info h3{font-family:'Dancing Script',cursive;color:var(--gold);font-size:28px;margin:0 0 8px;font-weight:700}
+  .client-header .info .row{font-size:12.5px;color:var(--text-dim);margin:2px 0}
+  .client-header .info .row b{color:var(--text);font-weight:500}
+  .comanda-panel{background:var(--panel);border:1px solid #232323;border-radius:12px;padding:22px 26px;margin-bottom:26px}
+  .comanda-panel h4{margin:0 0 14px;font-size:15px;color:var(--gold);font-weight:600}
+  .comanda-item-row{display:flex;justify-content:space-between;align-items:flex-start;font-size:12.5px;padding:9px 0;border-bottom:1px solid #1e1e1e;gap:10px}
+  .comanda-item-row .desc{color:var(--text-dim)}
+  .comanda-item-row .desc b{color:var(--text)}
+  .comanda-item-row .val{color:var(--text);font-weight:600;white-space:nowrap}
+  .comanda-total-line{display:flex;justify-content:space-between;font-weight:700;margin-top:12px;font-size:15px;padding-top:10px;border-top:1px solid #2a2a2a}
+  .comanda-actions{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap}
+  .client-history-item{background:var(--panel);border:1px solid #232323;border-radius:10px;padding:14px 20px;margin-bottom:14px}
+  .client-history-item .chi-top{display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-dim);margin-bottom:8px}
+  .client-history-item .chi-top b{color:var(--text)}
+
+  /* ---------- Histórico ---------- */
+  .hist-table{width:100%;border-collapse:collapse;font-size:13px}
+  .hist-table th{text-align:left;font-weight:600;color:var(--text-dim);font-size:12px;text-transform:uppercase;letter-spacing:.5px;padding:10px 12px;border-bottom:1px solid #2a2a2a}
+  .hist-table td{padding:11px 12px;border-bottom:1px solid #1e1e1e;color:var(--text)}
+  .hist-table tr:hover td{background:#141414}
+  .hist-items{font-size:11.5px;color:var(--text-dim)}
+
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#1c1c1c;border:1px solid var(--gold-dark);color:var(--text);padding:12px 22px;border-radius:8px;font-size:13.5px;box-shadow:0 6px 18px rgba(0,0,0,.5);z-index:300;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;max-width:80vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
+  ::-webkit-scrollbar{width:8px}
+  ::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px}
+
+  /* ---------- Notificação de estoque baixo ---------- */
+  .notif-bell{position:fixed;top:22px;right:34px;z-index:60}
+  .notif-bell button{width:42px;height:42px;border-radius:50%;background:#1c1c1c;border:1px solid #2f2f2f;display:flex;align-items:center;justify-content:center;color:var(--gold);position:relative}
+  .notif-bell button:hover{background:#242424;border-color:var(--gold-dark)}
+  .notif-badge{position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+  .notif-dropdown{position:absolute;top:50px;right:0;width:280px;background:var(--panel);border:1px solid #2a2a2a;border-radius:10px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.5);display:none}
+  .notif-dropdown.open{display:block}
+  .notif-dropdown h4{margin:0 0 10px;font-size:13px;color:var(--gold)}
+  .notif-item{font-size:12.5px;padding:7px 0;border-bottom:1px solid #222;color:var(--text-dim);display:flex;justify-content:space-between;gap:10px}
+  .notif-item:last-child{border-bottom:none}
+  .notif-item b{color:var(--text);font-weight:600}
+  .notif-empty{font-size:12.5px;color:var(--text-dim)}
+  .card.low-alert{border-color:#5a3d1a}
+  .card .low-badge{position:absolute;top:6px;left:6px;background:rgba(214,150,60,.18);border:1px solid #6b4a1e;color:#e0a35f;font-size:13px;width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center}
+
+  /* ---------- Compras ---------- */
+  .compra-row{background:#161616;border:1px solid #262626;border-radius:8px;padding:14px 16px;margin-bottom:12px}
+  .compra-row .linha1{display:flex;gap:10px;align-items:center}
+  .compra-row select{flex:2;padding:9px 12px;border-radius:6px;border:none;background:var(--input-bg);color:var(--input-text);font-size:13.5px;font-family:inherit}
+  .compra-row .novo-fields{display:none;gap:10px;margin-top:10px}
+  .compra-row .novo-fields.show{display:flex}
+  .compra-row .novo-fields input,.compra-row .novo-fields select{flex:1;padding:9px 12px;border-radius:6px;border:none;background:var(--input-bg);color:var(--input-text);font-size:13.5px;font-family:inherit}
+  .compra-row .linha2{display:flex;gap:14px;align-items:flex-end;margin-top:12px;flex-wrap:wrap}
+  .compra-row .linha2 .mini-field{display:flex;flex-direction:column;gap:5px}
+  .compra-row .linha2 .mini-field label{font-size:11px;color:var(--text-dim)}
+  .compra-row .linha2 .mini-field input{padding:8px 10px;border-radius:6px;border:none;background:var(--input-bg);color:var(--input-text);font-size:13px;width:110px}
+  .compra-row .linha2 .valor-total-box{margin-left:auto;text-align:right}
+  .compra-row .linha2 .valor-total-box label{font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px}
+  .compra-row .linha2 .valor-total-box .valor{font-weight:700;color:var(--gold);font-size:15px}
+  .compra-row .row-remove-wrap{text-align:right;margin-top:8px}
+  .toggle-btn{padding:9px 20px;border-radius:6px;border:1px solid #3a3a3a;background:#232323;color:var(--text);font-size:13px;font-weight:500}
+  .toggle-btn:hover{background:#2c2c2c}
+  .toggle-btn.selected{background:var(--gold-grad);border:none;color:#1c1502}
+  .hist-filter{display:flex;align-items:flex-end;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+  .hist-filter .mini-field{display:flex;flex-direction:column;gap:5px}
+  .hist-filter .mini-field label{font-size:11px;color:var(--text-dim)}
+  .hist-filter .mini-field input{padding:8px 10px;border-radius:6px;border:none;background:var(--input-bg);color:var(--input-text);font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="logo">
+      <span class="top">STUDIO</span>
+      <span class="cris">Cris</span>
+    </div>
+    <div class="field">
+      <label>E-mail</label>
+      <input type="email" id="login-email" placeholder="seu@email.com" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <div class="modal-actions" style="margin-top:6px">
+      <button class="btn btn-primary" id="login-btn" style="width:100%">Entrar</button>
+    </div>
+    <div class="login-hint" id="login-hint"></div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div class="app" id="app" hidden>
+  <div class="notif-bell" id="notif-bell">
+    <button id="notif-bell-btn" type="button">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M6 10a6 6 0 1112 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 20a2 2 0 004 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="notif-badge" id="notif-badge" hidden>0</span>
+    </button>
+    <div class="notif-dropdown" id="notif-dropdown">
+      <h4>Estoque baixo</h4>
+      <div id="notif-list"><div class="notif-empty">Nenhum alerta no momento.</div></div>
+    </div>
+  </div>
+  <aside class="sidebar">
+    <div class="logo"><span class="top">STUDIO</span><span class="cris">Cris</span></div>
+    <nav class="nav">
+      <button class="nav-btn active" data-page="estoque">
+        <svg class="ic" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor"/></svg>
+        Estoque
+      </button>
+      <button class="nav-btn" data-page="compras">
+        <svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M4 7h16l-1.5 11a2 2 0 01-2 1.7H7.5a2 2 0 01-2-1.7L4 7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 7V5.5a4 4 0 018 0V7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Compras
+      </button>
+      <button class="nav-btn" data-page="servicos">
+        <svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M6 3h9l4 4v14a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.6"/><path d="M9 12h6M9 16h6M9 8h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Serviços
+      </button>
+      <button class="nav-btn" data-page="clientes">
+        <svg class="ic" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.6"/><path d="M5 20c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Clientes
+      </button>
+      <button class="nav-btn" data-page="comandas-abertas">
+        <svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M7 3h10a1 1 0 011 1v16l-3-2-3 2-3-2-3 2V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 8h6M9 12h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Comandas Abertas
+      </button>
+      <button class="nav-btn" data-page="calcular">
+        <svg class="ic" viewBox="0 0 24 24" fill="none"><rect x="4" y="2.5" width="16" height="19" rx="2" stroke="currentColor" stroke-width="1.6"/><rect x="7" y="5.5" width="10" height="4" rx=".5" fill="currentColor"/><circle cx="8" cy="13" r="1.1" fill="currentColor"/><circle cx="12" cy="13" r="1.1" fill="currentColor"/><circle cx="16" cy="13" r="1.1" fill="currentColor"/><circle cx="8" cy="17" r="1.1" fill="currentColor"/><circle cx="12" cy="17" r="1.1" fill="currentColor"/><circle cx="16" cy="17" r="1.1" fill="currentColor"/></svg>
+        Calcular Preço
+      </button>
+      <button class="nav-btn" data-page="historico">
+        <svg class="ic" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3.5 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Histórico
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-divider"></div>
+      <div class="user-profile" id="user-name">—</div>
+      <div class="user-role" id="user-role">—</div>
+      <button class="logout-btn" id="logout-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 4H5a1 1 0 00-1 1v14a1 1 0 001 1h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M15 16l4-4-4-4M19 12H9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Sair
+      </button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <section class="page visible" id="page-estoque">
+      <div class="page-header"><div>
+        <h2 class="page-title">Estoque</h2>
+        <div class="page-subtitle">Produtos cadastrados para uso nos procedimentos</div>
+      </div></div>
+      <div class="grid" id="products-grid"></div>
+    </section>
+
+    <section class="page" id="page-compras">
+      <div class="page-header"><div>
+        <h2 class="page-title">Compras</h2>
+        <div class="page-subtitle">Histórico de compras e entrada de produtos no estoque</div>
+      </div></div>
+
+      <div id="compras-lista-area">
+        <button class="btn btn-primary" id="nova-compra-btn" style="margin-bottom:22px">+ Adicionar Compra</button>
+        <div id="compras-historico-wrap"></div>
+      </div>
+
+      <div class="calc-panel" id="compra-panel" style="display:none;width:100%;max-width:720px">
+        <div class="calc-step2-header">
+          <button class="back-link" id="compra-cancelar-btn">‹ Cancelar</button>
+          <div class="service-tag">Nova Compra</div>
+        </div>
+        <div id="compra-itens-wrap"></div>
+        <button class="add-row-btn" id="compra-add-item-btn"><span style="font-size:16px">+</span> Adicionar item</button>
+        <div class="total-box">
+          <div class="total-line"><label>Valor total da compra:</label><div class="value" id="compra-total-value">R$ 0,00</div></div>
+          <div class="confirm-wrap"><button class="btn btn-primary" id="compra-finalizar-btn">Finalizar Compra</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-servicos">
+      <div class="page-header"><div>
+        <h2 class="page-title">Serviços</h2>
+        <div class="page-subtitle">Procedimentos e os produtos usados em cada um</div>
+      </div></div>
+      <div class="grid" id="services-grid"></div>
+    </section>
+
+    <section class="page" id="page-clientes">
+      <div class="page-header"><div>
+        <h2 class="page-title">Clientes</h2>
+        <div class="page-subtitle">Cadastro de clientes e abertura de comandas</div>
+      </div></div>
+      <input type="text" class="search-input" id="cliente-search" placeholder="Buscar por nome ou CPF...">
+      <div id="clientes-list"></div>
+    </section>
+
+    <section class="page" id="page-comandas-abertas">
+      <div class="page-header"><div>
+        <h2 class="page-title">Comandas Abertas</h2>
+        <div class="page-subtitle">Atendimentos em andamento — ainda não fechados</div>
+      </div></div>
+      <div id="comandas-abertas-wrap"></div>
+    </section>
+
+    <section class="page" id="page-cliente-detalhe">
+      <button class="client-back" id="cliente-voltar-btn">‹ Voltar para Clientes</button>
+      <div class="client-header">
+        <div class="info">
+          <h3 id="cd-nome"></h3>
+          <div class="row">CPF: <b id="cd-cpf"></b></div>
+          <div class="row">Número: <b id="cd-numero"></b></div>
+          <div class="row">Nascimento: <b id="cd-nascimento"></b></div>
+        </div>
+        <button class="btn" id="cd-editar-btn">Editar Cadastro</button>
+      </div>
+
+      <div id="comanda-fechada-area">
+        <button class="btn btn-primary" id="abrir-comanda-btn">Abrir Nova Comanda</button>
+      </div>
+
+      <div class="comanda-panel" id="comanda-aberta-panel" style="display:none">
+        <h4 id="comanda-aberta-titulo"></h4>
+        <div id="comanda-items-list"></div>
+        <div class="comanda-total-line"><span>Total da comanda:</span><span id="comanda-total-value">R$ 0,00</span></div>
+        <div class="comanda-actions">
+          <button class="btn btn-primary" id="comanda-add-proc-btn">+ Adicionar Procedimento</button>
+          <button class="btn" id="comanda-fechar-btn">Fechar Comanda</button>
+        </div>
+      </div>
+
+      <!-- fluxo de cálculo dentro da comanda -->
+      <div class="calc-panel" id="comanda-calc-step1" style="display:none">
+        <div class="calc-select-row">
+          <label>Selecionar Serviço</label>
+          <select id="comanda-service-select"></select>
+        </div>
+        <div class="confirm-wrap">
+          <button class="btn" id="comanda-calc-cancel-btn">Cancelar</button>
+          <button class="btn btn-primary" id="comanda-calc-continue-btn">Continuar</button>
+        </div>
+      </div>
+      <div class="calc-panel" id="comanda-calc-step2" style="display:none">
+        <div class="calc-step2-header">
+          <button class="back-link" id="comanda-calc-back-btn">‹ Trocar serviço</button>
+          <div class="service-tag" id="comanda-service-tag"></div>
+        </div>
+        <div id="comanda-calc-rows"></div>
+        <button class="add-row-btn" id="comanda-calc-add-row-btn"><span style="font-size:16px">+</span> Adicionar produto</button>
+        <div class="divider-plus"><div class="line"></div></div>
+        <div class="labor-row">
+          <label>Inserir Valor da Mão de Obra (R$)</label>
+          <input type="number" min="0" step="0.01" id="comanda-labor-input" placeholder="0,00">
+        </div>
+        <div class="total-box">
+          <div class="breakdown" id="comanda-breakdown"></div>
+          <div class="total-line"><label>Total:</label><div class="value" id="comanda-total-preview">R$ 0,00</div></div>
+          <div class="confirm-wrap"><button class="btn btn-primary" id="comanda-confirm-btn">Adicionar à Comanda</button></div>
+        </div>
+      </div>
+
+      <h2 class="page-title" style="font-size:17px;margin:30px 0 14px">Histórico do Cliente</h2>
+      <div id="cliente-historico-wrap"></div>
+    </section>
+
+    <section class="page" id="page-calcular">
+      <div class="page-header"><div>
+        <h2 class="page-title">Calcular Preço</h2>
+        <div class="page-subtitle">Simule o valor de um atendimento — apenas consulta, nada é salvo nem descontado do estoque</div>
+      </div></div>
+
+      <div class="calc-panel" id="calc-step1">
+        <div class="calc-select-row">
+          <label>Selecionar Serviço</label>
+          <select id="calc-service-select"></select>
+        </div>
+        <div class="confirm-wrap"><button class="btn btn-primary" id="calc-continue-btn">Continuar</button></div>
+      </div>
+
+      <div class="calc-panel" id="calc-step2" style="display:none">
+        <div class="calc-step2-header">
+          <button class="back-link" id="calc-back-btn">‹ Trocar serviço</button>
+          <div class="service-tag" id="calc-service-tag"></div>
+        </div>
+        <div id="calc-rows"></div>
+        <button class="add-row-btn" id="calc-add-row-btn"><span style="font-size:16px">+</span> Adicionar produto</button>
+        <div class="divider-plus"><div class="line"></div></div>
+        <div class="labor-row">
+          <label>Inserir Valor da Mão de Obra (R$)</label>
+          <input type="number" min="0" step="0.01" id="calc-labor-input" placeholder="0,00">
+        </div>
+        <div class="total-box">
+          <div class="breakdown" id="calc-breakdown"></div>
+          <div class="total-line"><label>Total:</label><div class="value" id="calc-total-value">R$ 0,00</div></div>
+          <div class="confirm-wrap"><button class="btn btn-primary" id="calc-confirm-btn">Calcular Valor</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-historico">
+      <div class="page-header"><div>
+        <h2 class="page-title">Histórico</h2>
+        <div class="page-subtitle">Procedimentos já realizados e registrados no sistema</div>
+      </div>
+      <button class="btn btn-primary" id="fechar-caixa-btn">🔒 Fechar Caixa (hoje)</button>
+      </div>
+      <div class="hist-filter">
+        <div class="mini-field"><label>De</label><input type="date" id="hist-data-de"></div>
+        <div class="mini-field"><label>Até</label><input type="date" id="hist-data-ate"></div>
+        <button class="btn btn-primary btn-small" id="hist-filtrar-btn">Filtrar</button>
+        <button class="btn btn-small" id="hist-hoje-btn">Hoje</button>
+      </div>
+      <div id="historico-wrap"></div>
+    </section>
+  </main>
+</div>
+
+<!-- MODAL PRODUTO -->
+<div class="overlay" id="product-modal-overlay" hidden>
+  <div class="modal">
+    <h3 id="product-modal-title">Novo Produto</h3>
+    <input type="file" accept="image/*" id="product-image-input" style="display:none">
+    <div class="img-upload" id="product-image-upload">
+      <span id="product-image-placeholder">+</span>
+      <img id="product-image-preview" style="display:none">
+    </div>
+    <div class="img-upload-label">Adicionar Imagem</div>
+    <div class="field"><label>Nome do Produto:</label><input type="text" id="product-name-input" placeholder="Ex: Pó Descolorante"></div>
+    <div class="field"><label>Preço do Pote (R$):</label><input type="number" min="0" step="0.01" id="product-price-input" placeholder="Ex: 100.00"></div>
+    <div class="field-row">
+      <div class="field"><label>Peso / Volume por Pote:</label><input type="number" min="0" step="0.01" id="product-weight-input" placeholder="Ex: 450"></div>
+      <div class="field"><label>Unidade:</label>
+        <select id="product-unit-input"><option value="g">g</option><option value="ml">ml</option><option value="kg">kg</option><option value="l">l</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Quantidade de Potes:</label><input type="number" min="0" step="1" id="product-qty-input" placeholder="Ex: 3"></div>
+    <div class="field"><label>Avisar quando estiver com quantos potes:</label><input type="number" min="0" step="1" id="product-min-input" placeholder="Ex: 1 (deixe em branco pra não avisar)"></div>
+    <div class="modal-actions">
+      <button class="btn" id="product-cancel-btn">Cancelar</button>
+      <button class="btn btn-primary" id="product-confirm-btn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SERVIÇO -->
+<div class="overlay" id="service-modal-overlay" hidden>
+  <div class="modal wide">
+    <h3 id="service-modal-title">Novo Serviço</h3>
+    <div class="field"><label>Nome do Serviço:</label><input type="text" id="service-name-input" placeholder="Ex: Luzes / Mechas"></div>
+    <label style="font-size:13px;font-weight:500;display:block;margin-bottom:8px">Produtos utilizados:</label>
+    <div id="service-recipe-rows"></div>
+    <button class="add-row-btn" id="service-add-row-btn"><span style="font-size:16px">+</span> Adicionar produto</button>
+    <div class="modal-actions">
+      <button class="btn" id="service-cancel-btn">Cancelar</button>
+      <button class="btn btn-primary" id="service-confirm-btn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CLIENTE -->
+<div class="overlay" id="client-modal-overlay" hidden>
+  <div class="modal">
+    <h3 id="client-modal-title">Novo Cliente</h3>
+    <div class="field"><label>Nome:</label><input type="text" id="client-name-input" placeholder="Nome completo"></div>
+    <div class="field"><label>Número:</label><input type="text" id="client-numero-input" placeholder="(00) 00000-0000"></div>
+    <div class="field"><label>CPF:</label><input type="text" id="client-cpf-input" placeholder="000.000.000-00"></div>
+    <div class="field"><label>Data de Nascimento:</label><input type="date" id="client-nascimento-input"></div>
+    <div class="modal-actions">
+      <button class="btn" id="client-cancel-btn">Cancelar</button>
+      <button class="btn btn-primary" id="client-confirm-btn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="pagamento-modal-overlay" hidden>
+  <div class="modal">
+    <h3>Fechar Comanda</h3>
+    <div style="text-align:center;margin-bottom:22px">
+      <div style="font-size:12.5px;color:var(--text-dim);margin-bottom:6px">Total a cobrar na maquininha</div>
+      <div style="font-size:26px;font-weight:700;color:var(--gold)" id="pagamento-total-value">R$ 0,00</div>
+    </div>
+    <div class="field">
+      <label>Forma de pagamento:</label>
+      <div class="toggle-group" id="pagamento-toggle-group" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="toggle-btn" type="button" data-val="dinheiro">Dinheiro</button>
+        <button class="toggle-btn" type="button" data-val="credito">Crédito</button>
+        <button class="toggle-btn" type="button" data-val="debito">Débito</button>
+        <button class="toggle-btn" type="button" data-val="pix">PIX</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="pagamento-cancel-btn">Cancelar</button>
+      <button class="btn btn-primary" id="pagamento-confirm-btn">Confirmar Pagamento e Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="produto-historico-overlay" hidden>
+  <div class="modal">
+    <h3 id="produto-historico-titulo">Histórico de Compras</h3>
+    <div id="produto-historico-lista" style="margin-bottom:20px"></div>
+    <div class="modal-actions">
+      <button class="btn" id="produto-historico-fechar-btn">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="fechar-caixa-overlay" hidden>
+  <div class="modal">
+    <h3>Fechar Caixa</h3>
+    <div style="font-size:12.5px;color:var(--text-dim);text-align:center;margin-bottom:18px" id="fechar-caixa-data"></div>
+    <div class="breakdown" id="fechar-caixa-resumo"></div>
+    <div class="total-line" style="margin-top:14px"><label>Total do dia:</label><div class="value" id="fechar-caixa-total">R$ 0,00</div></div>
+    <div class="modal-actions">
+      <button class="btn" id="fechar-caixa-fechar-btn">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   CONFIGURAÇÃO DO SUPABASE
+   Troque os dois valores abaixo pelos do SEU projeto:
+   Painel do Supabase > Settings > API
+   ============================================================ */
+const SUPABASE_URL = "https://lkvuekvklztjljtzkjxn.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_WbyjfZFALODVpW8ddA87qA_4ME_bTAN";
+
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ============ ESTADO ============ */
+let products = [], services = [], perfil = null;
+let editingProductId = null, editingServiceId = null, productImageData = null;
+let calcSelectedService = null, calcRows = [];
+let clientes = [], editingClientId = null;
+let clienteAtual = null, comandaAtual = null;
+let comandaSelectedService = null, comandaCalcRows = [];
+let compraItens = [];
+
+const isAdmin = () => perfil && perfil.papel === 'admin';
+
+/* ============ UTIL ============ */
+const brl = v => 'R$ ' + (Number(v)||0).toFixed(2).replace('.', ',');
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3200);
+}
+function consumeProduct(prod, amount){
+  let remaining = amount, enough = true;
+  while(remaining > 0.0001){
+    if(prod.restante_aberto <= 0.0001){
+      if(prod.potes_fechados <= 0){ enough = false; prod.restante_aberto = 0; break; }
+      prod.potes_fechados -= 1;
+      prod.restante_aberto = Number(prod.peso_unidade);
+    }
+    const take = Math.min(prod.restante_aberto, remaining);
+    prod.restante_aberto = +(prod.restante_aberto - take).toFixed(2);
+    remaining = +(remaining - take).toFixed(2);
+  }
+  if(remaining > 0.0001) enough = false;
+  return enough;
+}
+function atualizarAlertas(){
+  const baixos = products.filter(p => p.estoque_minimo != null && Number(p.estoque_minimo) >= 0
+                                       && Number(p.potes_fechados) <= Number(p.estoque_minimo));
+  const badge = document.getElementById('notif-badge');
+  const list = document.getElementById('notif-list');
+  if(baixos.length){
+    badge.hidden = false; badge.textContent = baixos.length;
+    list.innerHTML = baixos.map(p => `
+      <div class="notif-item"><span><b>${p.nome}</b><br>avisar com: ${p.estoque_minimo} ${p.estoque_minimo == 1 ? 'pote' : 'potes'}</span><span>${p.potes_fechados} ${p.potes_fechados == 1 ? 'pote' : 'potes'}</span></div>
+    `).join('');
+  } else {
+    badge.hidden = true;
+    list.innerHTML = '<div class="notif-empty">Nenhum alerta no momento.</div>';
+  }
+}
+document.getElementById('notif-bell-btn').addEventListener('click', e=>{
+  e.stopPropagation();
+  document.getElementById('notif-dropdown').classList.toggle('open');
+});
+document.addEventListener('click', e=>{
+  const bell = document.getElementById('notif-bell');
+  if(bell && !bell.contains(e.target)) document.getElementById('notif-dropdown').classList.remove('open');
+});
+
+/* ============ LOGIN ============ */
+document.getElementById('login-btn').addEventListener('click', doLogin);
+document.getElementById('login-password').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+document.getElementById('login-email').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
+  errEl.textContent = '';
+
+  if(!email || !password){ errEl.textContent = 'Informe e-mail e senha.'; return; }
+  const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  if(!emailValido){ errEl.textContent = 'E-mail em formato inválido.'; return; }
+  if(password.length < 6){ errEl.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
+
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  let result;
+  try{
+    result = await db.auth.signInWithPassword({ email, password });
+  }catch(e){
+    btn.disabled = false; btn.textContent = 'Entrar';
+    errEl.textContent = 'Não foi possível conectar ao servidor. Verifique sua internet ou se a URL/chave do Supabase estão certas no código.';
+    return;
+  }
+  btn.disabled = false; btn.textContent = 'Entrar';
+  const { error } = result;
+  if(error){ errEl.textContent = traduzErroLogin(error); return; }
+  await enterApp();
+}
+function traduzErroLogin(error){
+  const msg = (error.message || '').toLowerCase();
+  if(msg.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
+  if(msg.includes('email not confirmed')) return 'Este e-mail ainda não foi confirmado. Peça para o administrador marcar "Auto Confirm User" no painel do Supabase (Authentication > Users).';
+  if(msg.includes('user not found')) return 'Não existe usuário cadastrado com esse e-mail.';
+  if(msg.includes('rate limit') || error.status === 429) return 'Muitas tentativas seguidas. Aguarde um minuto e tente de novo.';
+  if(msg.includes('unable to validate email') || msg.includes('invalid email')) return 'E-mail em formato inválido.';
+  if(msg.includes('failed to fetch') || msg.includes('network')) return 'Não foi possível conectar ao servidor. Verifique sua internet ou a configuração do Supabase.';
+  return 'Não foi possível entrar: ' + (error.message || 'erro desconhecido.');
+}
+
+document.getElementById('logout-btn').addEventListener('click', async ()=>{
+  await db.auth.signOut();
+  location.reload();
+});
+
+async function enterApp(){
+  const { data: { user } } = await db.auth.getUser();
+  if(!user) return;
+  const { data, error } = await db.from('perfis').select('*').eq('id', user.id).single();
+  if(error || !data){
+    document.getElementById('login-error').textContent = 'Usuário sem perfil cadastrado. Avise o administrador.';
+    await db.auth.signOut();
+    return;
+  }
+  perfil = data;
+  document.getElementById('user-name').textContent = perfil.nome;
+  document.getElementById('user-role').textContent = perfil.papel === 'admin' ? 'Administrador' : 'Gestora';
+  document.getElementById('login-screen').hidden = true;
+  document.getElementById('app').hidden = false;
+  await carregarTudo();
+}
+
+/* ============ CARGA DE DADOS ============ */
+async function carregarTudo(){
+  await Promise.all([carregarProdutos(), carregarServicos()]);
+  renderProducts(); renderServices(); populateCalcServiceSelect(); atualizarAlertas();
+}
+async function carregarProdutos(){
+  const { data, error } = await db.from('produtos').select('*').order('criado_em');
+  if(error){ showToast('Erro ao carregar produtos: ' + error.message); return; }
+  products = data || [];
+}
+async function carregarServicos(){
+  const { data, error } = await db.from('servicos')
+    .select('*, servico_itens(id, produto_id, quantidade)').order('criado_em');
+  if(error){ showToast('Erro ao carregar serviços: ' + error.message); return; }
+  services = (data || []).map(s => ({ ...s, receita: s.servico_itens || [] }));
+}
+
+/* ============ NAV ============ */
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('visible'));
+    document.getElementById('page-'+btn.dataset.page).classList.add('visible');
+    if(btn.dataset.page === 'estoque'){ carregarProdutos().then(()=>{ renderProducts(); atualizarAlertas(); }); }
+    if(btn.dataset.page === 'calcular') resetCalcFlow();
+    if(btn.dataset.page === 'historico') abrirHistoricoHoje();
+    if(btn.dataset.page === 'clientes') carregarClientes();
+    if(btn.dataset.page === 'comandas-abertas') carregarComandasAbertas();
+    if(btn.dataset.page === 'compras') abrirListaCompras();
+  });
+});
+
+/* ============ PRODUTOS ============ */
+function renderProducts(){
+  const grid = document.getElementById('products-grid');
+  grid.innerHTML = '';
+  products.forEach(p=>{
+    const card = document.createElement('div');
+    const semEstoque = p.potes_fechados === 0 && Number(p.restante_aberto) <= 0;
+    const estoqueBaixo = p.estoque_minimo != null && Number(p.potes_fechados) <= Number(p.estoque_minimo);
+    card.className = 'card' + (estoqueBaixo ? ' low-alert' : '');
+    card.innerHTML = `
+      ${estoqueBaixo ? `<span class="low-badge" title="Estoque abaixo do mínimo">⚠</span>` : ''}
+      ${isAdmin() ? `<button class="remove-btn" data-id="${p.id}">✕</button>` : ''}
+      <div class="thumb">${p.imagem ? `<img src="${p.imagem}">` : `<span class="placeholder">🧴</span>`}</div>
+      <div class="body">
+        <div class="name">${p.nome}</div>
+        <div class="row">Preço: <b>${Number(p.preco).toFixed(2).replace('.',',')} R$</b></div>
+        <div class="qty-label">Quantidade:</div>
+        <div class="qty-val">${p.potes_fechados} ${p.potes_fechados == 1 ? 'Pote inteiro' : 'Potes inteiros'}</div>
+        <div class="qty-val ${semEstoque ? 'low' : ''}">${Number(p.restante_aberto) > 0 ? `Pote aberto: ${Number(p.restante_aberto).toFixed(0)}${p.unidade}` : (semEstoque ? 'Sem estoque' : 'Nenhum pote aberto')}</div>
+        <button class="edit-btn" data-id="${p.id}">Editar</button>
+        <button class="edit-btn" data-id="${p.id}" data-hist="1" style="margin-top:6px">Histórico de Compras</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+  const addTile = document.createElement('button');
+  addTile.className = 'add-tile'; addTile.textContent = '+';
+  addTile.addEventListener('click', ()=>openProductModal());
+  grid.appendChild(addTile);
+
+  grid.querySelectorAll('.remove-btn').forEach(b=>b.addEventListener('click', async e=>{
+    e.stopPropagation();
+    if(!confirm('Remover este produto do estoque?')) return;
+    const { error } = await db.from('produtos').delete().eq('id', b.dataset.id);
+    if(error){ showToast('Erro ao remover: ' + error.message); return; }
+    await carregarTudo(); showToast('Produto removido.');
+  }));
+  grid.querySelectorAll('.edit-btn[data-hist="1"]').forEach(b=>b.addEventListener('click', ()=>{
+    abrirHistoricoComprasProduto(b.dataset.id);
+  }));
+  grid.querySelectorAll('.edit-btn:not([data-hist])').forEach(b=>b.addEventListener('click', ()=>{
+    openProductModal(products.find(p=>p.id === b.dataset.id));
+  }));
+}
+
+function openProductModal(product){
+  editingProductId = product ? product.id : null;
+  productImageData = product ? (product.imagem || null) : null;
+  document.getElementById('product-modal-title').textContent = product ? 'Editar Produto' : 'Novo Produto';
+  document.getElementById('product-name-input').value = product ? product.nome : '';
+  document.getElementById('product-price-input').value = product ? product.preco : '';
+  document.getElementById('product-weight-input').value = product ? product.peso_unidade : '';
+  document.getElementById('product-unit-input').value = product ? product.unidade : 'g';
+  document.getElementById('product-qty-input').value = product ? product.total_unidades : '';
+  document.getElementById('product-min-input').value = (product && product.estoque_minimo != null) ? product.estoque_minimo : '';
+  const preview = document.getElementById('product-image-preview');
+  const ph = document.getElementById('product-image-placeholder');
+  if(productImageData){ preview.src = productImageData; preview.style.display='block'; ph.style.display='none'; }
+  else { preview.style.display='none'; ph.style.display='block'; }
+  document.getElementById('product-modal-overlay').hidden = false;
+}
+document.getElementById('product-cancel-btn').addEventListener('click', ()=>{
+  document.getElementById('product-modal-overlay').hidden = true;
+});
+document.getElementById('product-image-upload').addEventListener('click', ()=>{
+  document.getElementById('product-image-input').click();
+});
+document.getElementById('product-image-input').addEventListener('change', e=>{
+  const file = e.target.files[0]; if(!file) return;
+  if(file.size > 400000){ showToast('Imagem muito grande. Use uma menor que 400 KB.'); return; }
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    productImageData = reader.result;
+    document.getElementById('product-image-preview').src = productImageData;
+    document.getElementById('product-image-preview').style.display = 'block';
+    document.getElementById('product-image-placeholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+});
+document.getElementById('product-confirm-btn').addEventListener('click', async ()=>{
+  const nome = document.getElementById('product-name-input').value.trim();
+  const preco = parseFloat(document.getElementById('product-price-input').value);
+  const peso_unidade = parseFloat(document.getElementById('product-weight-input').value);
+  const unidade = document.getElementById('product-unit-input').value;
+  const total_unidades = parseInt(document.getElementById('product-qty-input').value);
+  const minInputVal = document.getElementById('product-min-input').value;
+  const estoque_minimo = minInputVal === '' ? null : parseInt(minInputVal);
+  if(!nome || isNaN(preco) || isNaN(peso_unidade) || isNaN(total_unidades)){
+    showToast('Preencha todos os campos corretamente.'); return;
+  }
+  const payload = { nome, preco, peso_unidade, unidade, total_unidades, estoque_minimo,
+                    potes_fechados: total_unidades, restante_aberto: 0, imagem: productImageData };
+  const { error } = editingProductId
+    ? await db.from('produtos').update(payload).eq('id', editingProductId)
+    : await db.from('produtos').insert(payload);
+  if(error){ showToast('Erro ao salvar: ' + error.message); return; }
+  document.getElementById('product-modal-overlay').hidden = true;
+  await carregarTudo(); showToast('Produto salvo com sucesso.');
+});
+
+/* ============ SERVIÇOS ============ */
+function renderServices(){
+  const grid = document.getElementById('services-grid');
+  grid.innerHTML = '';
+  if(services.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Nenhum serviço cadastrado ainda. Use o botão "+" para adicionar.';
+    grid.appendChild(empty);
+  }
+  services.forEach(s=>{
+    const card = document.createElement('div');
+    card.className = 'card service';
+    let recipeHtml = (s.receita||[]).map(r=>{
+      const prod = products.find(p=>p.id === r.produto_id);
+      return `<div class="recipe-item"><span>${prod ? prod.nome : '(removido)'}</span><span>${r.quantidade}${prod ? prod.unidade : ''}</span></div>`;
+    }).join('');
+    if(!recipeHtml) recipeHtml = `<div class="recipe-item"><span>Sem produtos definidos</span></div>`;
+    card.innerHTML = `
+      ${isAdmin() ? `<button class="remove-btn" data-id="${s.id}">✕</button>` : ''}
+      <div class="body" style="padding:14px">
+        <div class="name">${s.nome}</div>
+        ${recipeHtml}
+        <button class="edit-btn" data-id="${s.id}">Editar</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+  const addTile = document.createElement('button');
+  addTile.className = 'add-tile'; addTile.textContent = '+';
+  addTile.addEventListener('click', ()=>openServiceModal());
+  grid.appendChild(addTile);
+
+  grid.querySelectorAll('.remove-btn').forEach(b=>b.addEventListener('click', async e=>{
+    e.stopPropagation();
+    if(!confirm('Remover este serviço?')) return;
+    const { error } = await db.from('servicos').delete().eq('id', b.dataset.id);
+    if(error){ showToast('Erro ao remover: ' + error.message); return; }
+    await carregarTudo(); showToast('Serviço removido.');
+  }));
+  grid.querySelectorAll('.edit-btn').forEach(b=>b.addEventListener('click', ()=>{
+    openServiceModal(services.find(s=>s.id === b.dataset.id));
+  }));
+}
+
+function openServiceModal(service){
+  editingServiceId = service ? service.id : null;
+  document.getElementById('service-modal-title').textContent = service ? 'Editar Serviço' : 'Novo Serviço';
+  document.getElementById('service-name-input').value = service ? service.nome : '';
+  document.getElementById('service-recipe-rows').innerHTML = '';
+  const receita = service ? (service.receita||[]).slice() : [];
+  if(receita.length === 0) receita.push({produto_id:'', quantidade:''});
+  receita.forEach(r => addServiceRecipeRow(r.produto_id, r.quantidade));
+  document.getElementById('service-modal-overlay').hidden = false;
+}
+function addServiceRecipeRow(produtoId, quantidade){
+  const wrap = document.getElementById('service-recipe-rows');
+  const row = document.createElement('div');
+  row.className = 'recipe-row';
+  const options = products.map(p=>`<option value="${p.id}" ${p.id===produtoId?'selected':''}>${p.nome}</option>`).join('');
+  row.innerHTML = `
+    <select class="svc-product-select"><option value="">Selecionar Produto</option>${options}</select>
+    <input type="number" min="0" step="0.01" class="svc-amount-input" placeholder="Qtd." value="${quantidade ?? ''}">
+    <span class="unit-badge svc-unit-badge">${(products.find(p=>p.id===produtoId)||{}).unidade || ''}</span>
+    <button class="row-remove" type="button">✕</button>`;
+  row.querySelector('.svc-product-select').addEventListener('change', e=>{
+    const prod = products.find(p=>p.id === e.target.value);
+    row.querySelector('.svc-unit-badge').textContent = prod ? prod.unidade : '';
+  });
+  row.querySelector('.row-remove').addEventListener('click', ()=>row.remove());
+  wrap.appendChild(row);
+}
+document.getElementById('service-add-row-btn').addEventListener('click', ()=>addServiceRecipeRow('',''));
+document.getElementById('service-cancel-btn').addEventListener('click', ()=>{
+  document.getElementById('service-modal-overlay').hidden = true;
+});
+document.getElementById('service-confirm-btn').addEventListener('click', async ()=>{
+  const nome = document.getElementById('service-name-input').value.trim();
+  if(!nome){ showToast('Informe o nome do serviço.'); return; }
+  const receita = [];
+  document.querySelectorAll('#service-recipe-rows .recipe-row').forEach(row=>{
+    const produto_id = row.querySelector('.svc-product-select').value;
+    const quantidade = parseFloat(row.querySelector('.svc-amount-input').value);
+    if(produto_id && !isNaN(quantidade)) receita.push({produto_id, quantidade});
+  });
+
+  let servicoId = editingServiceId;
+  if(servicoId){
+    const { error } = await db.from('servicos').update({nome}).eq('id', servicoId);
+    if(error){ showToast('Erro ao salvar: ' + error.message); return; }
+    await db.from('servico_itens').delete().eq('servico_id', servicoId);
+  } else {
+    const { data, error } = await db.from('servicos').insert({nome}).select().single();
+    if(error){ showToast('Erro ao salvar: ' + error.message); return; }
+    servicoId = data.id;
+  }
+  if(receita.length){
+    const { error } = await db.from('servico_itens')
+      .insert(receita.map(r=>({ servico_id: servicoId, produto_id: r.produto_id, quantidade: r.quantidade })));
+    if(error){ showToast('Erro ao salvar produtos do serviço: ' + error.message); return; }
+  }
+  document.getElementById('service-modal-overlay').hidden = true;
+  await carregarTudo(); showToast('Serviço salvo com sucesso.');
+});
+
+/* ============ CALCULAR PREÇO ============ */
+function populateCalcServiceSelect(){
+  const sel = document.getElementById('calc-service-select');
+  sel.innerHTML = services.length
+    ? services.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('')
+    : `<option value="">Nenhum serviço cadastrado</option>`;
+}
+function resetCalcFlow(){
+  document.getElementById('calc-step1').style.display = 'block';
+  document.getElementById('calc-step2').style.display = 'none';
+  populateCalcServiceSelect();
+}
+document.getElementById('calc-continue-btn').addEventListener('click', ()=>{
+  const service = services.find(s=>s.id === document.getElementById('calc-service-select').value);
+  if(!service){ showToast('Cadastre um serviço primeiro.'); return; }
+  calcSelectedService = service;
+  calcRows = (service.receita||[]).map(r=>({productId: r.produto_id, amount: Number(r.quantidade)}));
+  if(calcRows.length === 0) calcRows.push({productId:'', amount:''});
+  document.getElementById('calc-service-tag').textContent = service.nome;
+  document.getElementById('calc-labor-input').value = '';
+  renderCalcRows(); updateCalcTotal();
+  document.getElementById('calc-step1').style.display = 'none';
+  document.getElementById('calc-step2').style.display = 'block';
+});
+document.getElementById('calc-back-btn').addEventListener('click', resetCalcFlow);
+
+function renderCalcRows(){
+  const wrap = document.getElementById('calc-rows');
+  wrap.innerHTML = '';
+  calcRows.forEach((row, idx)=>{
+    const prod = products.find(p=>p.id === row.productId);
+    const div = document.createElement('div');
+    div.className = 'recipe-row';
+    const options = products.map(p=>`<option value="${p.id}" ${p.id===row.productId?'selected':''}>${p.nome}</option>`).join('');
+    div.innerHTML = `
+      <select class="calc-product-select"><option value="">Selecionar Produto</option>${options}</select>
+      <input type="number" min="0" step="0.01" class="calc-amount-input" placeholder="Qtd. consumida" value="${row.amount ?? ''}">
+      <span class="unit-badge calc-unit-badge">${prod ? prod.unidade : ''}</span>
+      <button class="row-remove" type="button">✕</button>`;
+    div.querySelector('.calc-product-select').addEventListener('change', e=>{
+      row.productId = e.target.value;
+      const p = products.find(x=>x.id === row.productId);
+      div.querySelector('.calc-unit-badge').textContent = p ? p.unidade : '';
+      updateCalcTotal();
+    });
+    div.querySelector('.calc-amount-input').addEventListener('input', e=>{
+      row.amount = parseFloat(e.target.value); updateCalcTotal();
+    });
+    div.querySelector('.row-remove').addEventListener('click', ()=>{
+      calcRows.splice(idx,1); renderCalcRows(); updateCalcTotal();
+    });
+    wrap.appendChild(div);
+  });
+}
+document.getElementById('calc-add-row-btn').addEventListener('click', ()=>{
+  calcRows.push({productId:'', amount:''}); renderCalcRows();
+});
+document.getElementById('calc-labor-input').addEventListener('input', updateCalcTotal);
+
+function calcRowCost(row){
+  const prod = products.find(p=>p.id === row.productId);
+  if(!prod || !row.amount || isNaN(row.amount) || !Number(prod.peso_unidade)) return 0;
+  return (Number(prod.preco) / Number(prod.peso_unidade)) * row.amount;
+}
+function updateCalcTotal(){
+  const bd = document.getElementById('calc-breakdown');
+  bd.innerHTML = '';
+  let produtosTotal = 0;
+  calcRows.forEach(row=>{
+    const prod = products.find(p=>p.id === row.productId);
+    if(!prod || !row.amount) return;
+    const cost = calcRowCost(row);
+    produtosTotal += cost;
+    const line = document.createElement('div');
+    line.className = 'breakdown-row';
+    line.innerHTML = `<span>${prod.nome} (${row.amount}${prod.unidade})</span><span>${brl(cost)}</span>`;
+    bd.appendChild(line);
+  });
+  const subtotal = document.createElement('div');
+  subtotal.className = 'breakdown-row';
+  subtotal.innerHTML = `<span>Subtotal produtos</span><span>${brl(produtosTotal)}</span>`;
+  bd.appendChild(subtotal);
+  const labor = parseFloat(document.getElementById('calc-labor-input').value) || 0;
+  const laborLine = document.createElement('div');
+  laborLine.className = 'breakdown-row';
+  laborLine.innerHTML = `<span>Mão de obra</span><span>${brl(labor)}</span>`;
+  bd.appendChild(laborLine);
+  document.getElementById('calc-total-value').textContent = brl(produtosTotal + labor);
+  return { produtosTotal, labor, total: produtosTotal + labor };
+}
+
+document.getElementById('calc-confirm-btn').addEventListener('click', ()=>{
+  const validRows = calcRows.filter(r=>r.productId && r.amount);
+  if(validRows.length === 0){ showToast('Adicione ao menos um produto com quantidade.'); return; }
+  updateCalcTotal();
+  showToast('Valor calculado. Nada foi salvo nem descontado do estoque.');
+});
+
+/* ============ CLIENTES ============ */
+async function carregarClientes(){
+  const { data, error } = await db.from('clientes').select('*').order('nome');
+  if(error){ showToast('Erro ao carregar clientes: ' + error.message); return; }
+  clientes = data || [];
+  renderClientes();
+}
+function renderClientes(){
+  const wrap = document.getElementById('clientes-list');
+  const termo = (document.getElementById('cliente-search').value || '').toLowerCase().trim();
+  const filtrados = clientes.filter(c =>
+    c.nome.toLowerCase().includes(termo) || (c.cpf||'').toLowerCase().includes(termo));
+  if(filtrados.length === 0){
+    wrap.innerHTML = `<div class="empty-state">${clientes.length===0 ? 'Nenhum cliente cadastrado ainda.' : 'Nenhum cliente encontrado.'}</div>`;
+  } else {
+    wrap.innerHTML = `
+      <table class="hist-table">
+        <thead><tr><th>Nome</th><th>CPF</th><th>Número</th><th>Nascimento</th><th></th></tr></thead>
+        <tbody>
+          ${filtrados.map(c=>`
+            <tr>
+              <td>${c.nome}</td>
+              <td>${c.cpf || '—'}</td>
+              <td>${c.numero || '—'}</td>
+              <td>${c.data_nascimento ? new Date(c.data_nascimento+'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+              <td style="white-space:nowrap"><button class="btn btn-small" data-id="${c.id}" data-act="abrir">Abrir</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+    wrap.querySelectorAll('[data-act="abrir"]').forEach(b=>b.addEventListener('click', ()=>abrirClienteDetalhe(b.dataset.id)));
+  }
+  const addBtn = document.createElement('button');
+  addBtn.className = 'btn btn-primary'; addBtn.style.marginTop = '18px';
+  addBtn.textContent = '+ Novo Cliente';
+  addBtn.addEventListener('click', ()=>openClientModal());
+  wrap.appendChild(addBtn);
+}
+document.getElementById('cliente-search').addEventListener('input', renderClientes);
+
+function openClientModal(client){
+  editingClientId = client ? client.id : null;
+  document.getElementById('client-modal-title').textContent = client ? 'Editar Cliente' : 'Novo Cliente';
+  document.getElementById('client-name-input').value = client ? client.nome : '';
+  document.getElementById('client-numero-input').value = client ? (client.numero||'') : '';
+  document.getElementById('client-cpf-input').value = client ? (client.cpf||'') : '';
+  document.getElementById('client-nascimento-input').value = client ? (client.data_nascimento||'') : '';
+  document.getElementById('client-modal-overlay').hidden = false;
+}
+document.getElementById('client-cancel-btn').addEventListener('click', ()=>{
+  document.getElementById('client-modal-overlay').hidden = true;
+});
+document.getElementById('client-confirm-btn').addEventListener('click', async ()=>{
+  const nome = document.getElementById('client-name-input').value.trim();
+  const numero = document.getElementById('client-numero-input').value.trim();
+  const cpf = document.getElementById('client-cpf-input').value.trim();
+  const data_nascimento = document.getElementById('client-nascimento-input').value || null;
+  if(!nome){ showToast('Informe o nome do cliente.'); return; }
+  const payload = { nome, numero: numero || null, cpf: cpf || null, data_nascimento };
+  const { error } = editingClientId
+    ? await db.from('clientes').update(payload).eq('id', editingClientId)
+    : await db.from('clientes').insert(payload);
+  if(error){
+    showToast(error.code === '23505' ? 'Já existe um cliente com esse CPF.' : 'Erro ao salvar: ' + error.message);
+    return;
+  }
+  document.getElementById('client-modal-overlay').hidden = true;
+  await carregarClientes();
+  showToast('Cliente salvo com sucesso.');
+  if(editingClientId && clienteAtual && clienteAtual.id === editingClientId){
+    clienteAtual = clientes.find(c=>c.id === editingClientId);
+    preencherCabecalhoCliente();
+  }
+});
+document.getElementById('cd-editar-btn').addEventListener('click', ()=>openClientModal(clienteAtual));
+
+/* ---- Cliente: detalhe + comanda ---- */
+document.getElementById('cliente-voltar-btn').addEventListener('click', ()=>{
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('visible'));
+  document.getElementById('page-clientes').classList.add('visible');
+});
+
+function preencherCabecalhoCliente(){
+  document.getElementById('cd-nome').textContent = clienteAtual.nome;
+  document.getElementById('cd-cpf').textContent = clienteAtual.cpf || '—';
+  document.getElementById('cd-numero').textContent = clienteAtual.numero || '—';
+  document.getElementById('cd-nascimento').textContent = clienteAtual.data_nascimento
+    ? new Date(clienteAtual.data_nascimento+'T00:00:00').toLocaleDateString('pt-BR') : '—';
+}
+
+async function carregarComandasAbertas(){
+  const wrap = document.getElementById('comandas-abertas-wrap');
+  wrap.innerHTML = '<div class="empty-state">Carregando...</div>';
+  const { data, error } = await db.from('comandas')
+    .select('*, clientes(nome), procedimentos(total)')
+    .eq('status', 'aberta').order('aberta_em', { ascending: false });
+  if(error){ wrap.innerHTML = `<div class="empty-state">Erro ao carregar: ${error.message}</div>`; return; }
+  if(!data || data.length === 0){
+    wrap.innerHTML = '<div class="empty-state">Nenhuma comanda aberta no momento.</div>'; return;
+  }
+  wrap.innerHTML = `
+    <table class="hist-table">
+      <thead><tr><th>Cliente</th><th>Aberta em</th><th>Total até agora</th><th></th></tr></thead>
+      <tbody>
+        ${data.map(c=>{
+          const total = (c.procedimentos||[]).reduce((s,p)=>s+Number(p.total), 0);
+          return `<tr>
+            <td>${c.clientes ? c.clientes.nome : '—'}</td>
+            <td>${new Date(c.aberta_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+            <td><b>${brl(total)}</b></td>
+            <td style="white-space:nowrap"><button class="btn btn-small" data-cid="${c.cliente_id}">Abrir</button></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+  wrap.querySelectorAll('button[data-cid]').forEach(b=>b.addEventListener('click', async ()=>{
+    if(!clientes.length) await carregarClientes();
+    abrirClienteDetalhe(b.dataset.cid);
+  }));
+}
+
+async function abrirClienteDetalhe(clienteId){
+  clienteAtual = clientes.find(c=>c.id === clienteId);
+  if(!clienteAtual) return;
+  preencherCabecalhoCliente();
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('visible'));
+  document.getElementById('page-cliente-detalhe').classList.add('visible');
+  document.getElementById('comanda-calc-step1').style.display = 'none';
+  document.getElementById('comanda-calc-step2').style.display = 'none';
+
+  const { data, error } = await db.from('comandas')
+    .select('*').eq('cliente_id', clienteId).eq('status', 'aberta')
+    .order('aberta_em', {ascending:false}).limit(1).maybeSingle();
+  if(error){ showToast('Erro ao carregar comanda: ' + error.message); }
+  comandaAtual = data || null;
+  await atualizarPainelComanda();
+  await carregarHistoricoCliente(clienteId);
+}
+
+async function atualizarPainelComanda(){
+  const fechadaArea = document.getElementById('comanda-fechada-area');
+  const abertaPanel = document.getElementById('comanda-aberta-panel');
+  if(!comandaAtual){
+    fechadaArea.style.display = 'block';
+    abertaPanel.style.display = 'none';
+    return;
+  }
+  fechadaArea.style.display = 'none';
+  abertaPanel.style.display = 'block';
+  document.getElementById('comanda-aberta-titulo').textContent =
+    'Comanda aberta em ' + new Date(comandaAtual.aberta_em).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+
+  const { data: itens, error } = await db.from('procedimentos')
+    .select('*, procedimento_itens(produto_nome, quantidade, unidade, custo)')
+    .eq('comanda_id', comandaAtual.id).order('realizado_em');
+  const itemsWrap = document.getElementById('comanda-items-list');
+  if(error || !itens || itens.length === 0){
+    itemsWrap.innerHTML = '<div class="empty-state" style="padding:10px 0">Nenhum procedimento adicionado ainda nesta comanda.</div>';
+  } else {
+    itemsWrap.innerHTML = itens.map(p=>`
+      <div class="comanda-item-row">
+        <div class="desc"><b>${p.servico_nome}</b><br>${(p.procedimento_itens||[]).map(i=>`${i.produto_nome} (${i.quantidade}${i.unidade})`).join(', ') || '—'} · Mão de obra: ${brl(p.valor_mao_obra)}</div>
+        <div class="val">${brl(p.total)}</div>
+      </div>`).join('');
+  }
+  const total = (itens||[]).reduce((s,p)=>s+Number(p.total), 0);
+  document.getElementById('comanda-total-value').textContent = brl(total);
+}
+
+document.getElementById('abrir-comanda-btn').addEventListener('click', async ()=>{
+  const { data, error } = await db.from('comandas')
+    .insert({ cliente_id: clienteAtual.id }).select().single();
+  if(error){ showToast('Erro ao abrir comanda: ' + error.message); return; }
+  comandaAtual = data;
+  await atualizarPainelComanda();
+});
+
+let formaPagamentoSelecionada = null;
+
+document.getElementById('comanda-fechar-btn').addEventListener('click', async ()=>{
+  const { data: itens } = await db.from('procedimentos').select('total').eq('comanda_id', comandaAtual.id);
+  const total = (itens||[]).reduce((s,p)=>s+Number(p.total), 0);
+  if(total <= 0){ showToast('Adicione ao menos um procedimento antes de fechar a comanda.'); return; }
+  formaPagamentoSelecionada = null;
+  document.querySelectorAll('#pagamento-toggle-group .toggle-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('pagamento-total-value').textContent = brl(total);
+  document.getElementById('pagamento-modal-overlay').hidden = false;
+});
+
+document.querySelectorAll('#pagamento-toggle-group .toggle-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    formaPagamentoSelecionada = btn.dataset.val;
+    document.querySelectorAll('#pagamento-toggle-group .toggle-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+});
+document.getElementById('pagamento-cancel-btn').addEventListener('click', ()=>{
+  document.getElementById('pagamento-modal-overlay').hidden = true;
+});
+document.getElementById('pagamento-confirm-btn').addEventListener('click', async ()=>{
+  if(!formaPagamentoSelecionada){ showToast('Selecione a forma de pagamento usada na maquininha.'); return; }
+  const { data: itens } = await db.from('procedimentos').select('total').eq('comanda_id', comandaAtual.id);
+  const total = (itens||[]).reduce((s,p)=>s+Number(p.total), 0);
+  const { error } = await db.from('comandas')
+    .update({ status:'fechada', fechada_em: new Date().toISOString(), total: total.toFixed(2), forma_pagamento: formaPagamentoSelecionada })
+    .eq('id', comandaAtual.id);
+  if(error){ showToast('Erro ao fechar comanda: ' + error.message); return; }
+  document.getElementById('pagamento-modal-overlay').hidden = true;
+  comandaAtual = null;
+  document.getElementById('comanda-calc-step1').style.display = 'none';
+  document.getElementById('comanda-calc-step2').style.display = 'none';
+  await atualizarPainelComanda();
+  await carregarHistoricoCliente(clienteAtual.id);
+  showToast('Pagamento registrado e comanda fechada.');
+});
+
+/* ---- fluxo de adicionar procedimento dentro da comanda ---- */
+document.getElementById('comanda-add-proc-btn').addEventListener('click', ()=>{
+  document.getElementById('comanda-aberta-panel').style.display = 'none';
+  const sel = document.getElementById('comanda-service-select');
+  sel.innerHTML = services.length
+    ? services.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('')
+    : `<option value="">Nenhum serviço cadastrado</option>`;
+  document.getElementById('comanda-calc-step1').style.display = 'block';
+});
+document.getElementById('comanda-calc-cancel-btn').addEventListener('click', ()=>{
+  document.getElementById('comanda-calc-step1').style.display = 'none';
+  document.getElementById('comanda-aberta-panel').style.display = 'block';
+});
+document.getElementById('comanda-calc-back-btn').addEventListener('click', ()=>{
+  document.getElementById('comanda-calc-step2').style.display = 'none';
+  document.getElementById('comanda-calc-step1').style.display = 'block';
+});
+document.getElementById('comanda-calc-continue-btn').addEventListener('click', ()=>{
+  const service = services.find(s=>s.id === document.getElementById('comanda-service-select').value);
+  if(!service){ showToast('Cadastre um serviço primeiro.'); return; }
+  comandaSelectedService = service;
+  comandaCalcRows = (service.receita||[]).map(r=>({productId: r.produto_id, amount: Number(r.quantidade)}));
+  if(comandaCalcRows.length === 0) comandaCalcRows.push({productId:'', amount:''});
+  document.getElementById('comanda-service-tag').textContent = service.nome;
+  document.getElementById('comanda-labor-input').value = '';
+  renderComandaCalcRows(); updateComandaCalcTotal();
+  document.getElementById('comanda-calc-step1').style.display = 'none';
+  document.getElementById('comanda-calc-step2').style.display = 'block';
+});
+function renderComandaCalcRows(){
+  const wrap = document.getElementById('comanda-calc-rows');
+  wrap.innerHTML = '';
+  comandaCalcRows.forEach((row, idx)=>{
+    const prod = products.find(p=>p.id === row.productId);
+    const div = document.createElement('div');
+    div.className = 'recipe-row';
+    const options = products.map(p=>`<option value="${p.id}" ${p.id===row.productId?'selected':''}>${p.nome}</option>`).join('');
+    div.innerHTML = `
+      <select class="cc-product-select"><option value="">Selecionar Produto</option>${options}</select>
+      <input type="number" min="0" step="0.01" class="cc-amount-input" placeholder="Qtd. consumida" value="${row.amount ?? ''}">
+      <span class="unit-badge cc-unit-badge">${prod ? prod.unidade : ''}</span>
+      <button class="row-remove" type="button">✕</button>`;
+    div.querySelector('.cc-product-select').addEventListener('change', e=>{
+      row.productId = e.target.value;
+      const p = products.find(x=>x.id === row.productId);
+      div.querySelector('.cc-unit-badge').textContent = p ? p.unidade : '';
+      updateComandaCalcTotal();
+    });
+    div.querySelector('.cc-amount-input').addEventListener('input', e=>{
+      row.amount = parseFloat(e.target.value); updateComandaCalcTotal();
+    });
+    div.querySelector('.row-remove').addEventListener('click', ()=>{
+      comandaCalcRows.splice(idx,1); renderComandaCalcRows(); updateComandaCalcTotal();
+    });
+    wrap.appendChild(div);
+  });
+}
+document.getElementById('comanda-calc-add-row-btn').addEventListener('click', ()=>{
+  comandaCalcRows.push({productId:'', amount:''}); renderComandaCalcRows();
+});
+document.getElementById('comanda-labor-input').addEventListener('input', updateComandaCalcTotal);
+function updateComandaCalcTotal(){
+  const bd = document.getElementById('comanda-breakdown');
+  bd.innerHTML = '';
+  let produtosTotal = 0;
+  comandaCalcRows.forEach(row=>{
+    const prod = products.find(p=>p.id === row.productId);
+    if(!prod || !row.amount) return;
+    const cost = calcRowCost(row);
+    produtosTotal += cost;
+    const line = document.createElement('div');
+    line.className = 'breakdown-row';
+    line.innerHTML = `<span>${prod.nome} (${row.amount}${prod.unidade})</span><span>${brl(cost)}</span>`;
+    bd.appendChild(line);
+  });
+  const labor = parseFloat(document.getElementById('comanda-labor-input').value) || 0;
+  const laborLine = document.createElement('div');
+  laborLine.className = 'breakdown-row';
+  laborLine.innerHTML = `<span>Mão de obra</span><span>${brl(labor)}</span>`;
+  bd.appendChild(laborLine);
+  document.getElementById('comanda-total-preview').textContent = brl(produtosTotal + labor);
+  return { produtosTotal, labor, total: produtosTotal + labor };
+}
+document.getElementById('comanda-confirm-btn').addEventListener('click', async ()=>{
+  const validRows = comandaCalcRows.filter(r=>r.productId && r.amount);
+  if(validRows.length === 0){ showToast('Adicione ao menos um produto com quantidade.'); return; }
+  const btn = document.getElementById('comanda-confirm-btn');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+
+  const { produtosTotal, labor, total } = updateComandaCalcTotal();
+  const { data: { user } } = await db.auth.getUser();
+
+  const { data: proc, error: errProc } = await db.from('procedimentos').insert({
+    servico_id: comandaSelectedService.id,
+    servico_nome: comandaSelectedService.nome,
+    cliente_id: clienteAtual.id,
+    cliente_nome: clienteAtual.nome,
+    comanda_id: comandaAtual.id,
+    custo_produtos: produtosTotal.toFixed(2),
+    valor_mao_obra: labor.toFixed(2),
+    total: total.toFixed(2),
+    realizado_por: user ? user.id : null
+  }).select().single();
+  if(errProc){
+    btn.disabled = false; btn.textContent = 'Adicionar à Comanda';
+    showToast('Erro ao registrar: ' + errProc.message); return;
+  }
+
+  let faltou = false;
+  const itens = [];
+  for(const row of validRows){
+    const prod = products.find(p=>p.id === row.productId);
+    if(!prod) continue;
+    const ok = consumeProduct(prod, row.amount);
+    if(!ok) faltou = true;
+    itens.push({
+      procedimento_id: proc.id, produto_id: prod.id, produto_nome: prod.nome,
+      quantidade: row.amount, unidade: prod.unidade, custo: calcRowCost(row).toFixed(2)
+    });
+    await db.from('produtos').update({
+      potes_fechados: prod.potes_fechados, restante_aberto: prod.restante_aberto
+    }).eq('id', prod.id);
+  }
+  await db.from('procedimento_itens').insert(itens);
+  await carregarProdutos(); renderProducts(); atualizarAlertas();
+
+  btn.disabled = false; btn.textContent = 'Adicionar à Comanda';
+  document.getElementById('comanda-calc-step2').style.display = 'none';
+  document.getElementById('comanda-aberta-panel').style.display = 'block';
+  await atualizarPainelComanda();
+  showToast(faltou ? 'Adicionado. Atenção: estoque insuficiente para algum item.' : 'Procedimento adicionado à comanda.');
+});
+
+async function carregarHistoricoCliente(clienteId){
+  const wrap = document.getElementById('cliente-historico-wrap');
+  wrap.innerHTML = '<div class="empty-state">Carregando...</div>';
+  const { data, error } = await db.from('comandas')
+    .select('*, procedimentos(servico_nome, custo_produtos, valor_mao_obra, total, realizado_em, procedimento_itens(produto_nome, quantidade, unidade))')
+    .eq('cliente_id', clienteId).eq('status', 'fechada')
+    .order('fechada_em', { ascending: false });
+  if(error){ wrap.innerHTML = `<div class="empty-state">Erro ao carregar: ${error.message}</div>`; return; }
+  if(!data || data.length === 0){
+    wrap.innerHTML = '<div class="empty-state">Nenhuma comanda fechada ainda para este cliente.</div>'; return;
+  }
+  wrap.innerHTML = data.map(c=>`
+    <div class="client-history-item">
+      <div class="chi-top"><span>${new Date(c.fechada_em).toLocaleDateString('pt-BR')} — <span style="color:var(--gold)">${labelPagamento(c.forma_pagamento)}</span></span><b>Total: ${brl(c.total)}</b></div>
+      ${(c.procedimentos||[]).map(p=>`
+        <div class="comanda-item-row">
+          <div class="desc"><b>${p.servico_nome}</b><br>${(p.procedimento_itens||[]).map(i=>`${i.produto_nome} (${i.quantidade}${i.unidade})`).join(', ') || '—'}</div>
+          <div class="val">${brl(p.total)}</div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+function labelPagamento(code){
+  return { dinheiro:'Dinheiro', credito:'Cartão de Crédito', debito:'Cartão de Débito', pix:'PIX' }[code] || '—';
+}
+
+document.getElementById('fechar-caixa-btn').addEventListener('click', async ()=>{
+  const hoje = new Date().toISOString().slice(0,10);
+  const inicio = new Date(hoje + 'T00:00:00').toISOString();
+  const fim = new Date(hoje + 'T23:59:59.999').toISOString();
+  document.getElementById('fechar-caixa-data').textContent = new Date(hoje+'T00:00:00').toLocaleDateString('pt-BR');
+  const resumoEl = document.getElementById('fechar-caixa-resumo');
+  resumoEl.innerHTML = '<div class="breakdown-row"><span>Carregando...</span></div>';
+  document.getElementById('fechar-caixa-overlay').hidden = false;
+
+  const { data, error } = await db.from('procedimentos')
+    .select('custo_produtos, valor_mao_obra, total, comandas(forma_pagamento)')
+    .gte('realizado_em', inicio).lte('realizado_em', fim);
+  if(error){ resumoEl.innerHTML = `<div class="breakdown-row"><span>Erro: ${error.message}</span></div>`; return; }
+  if(!data || data.length === 0){
+    resumoEl.innerHTML = '<div class="breakdown-row"><span>Nenhum atendimento registrado hoje.</span></div>';
+    document.getElementById('fechar-caixa-total').textContent = brl(0);
+    return;
+  }
+  let totalProdutos = 0, totalMaoObra = 0, totalGeral = 0;
+  const porPagamento = { dinheiro:0, credito:0, debito:0, pix:0, null:0 };
+  data.forEach(p=>{
+    totalProdutos += Number(p.custo_produtos);
+    totalMaoObra += Number(p.valor_mao_obra);
+    totalGeral += Number(p.total);
+    const forma = p.comandas ? p.comandas.forma_pagamento : null;
+    porPagamento[forma || 'null'] = (porPagamento[forma || 'null'] || 0) + Number(p.total);
+  });
+  let linhas = `
+    <div class="breakdown-row"><span>Total gasto em produtos</span><span>${brl(totalProdutos)}</span></div>
+    <div class="breakdown-row"><span>Total de mão de obra</span><span>${brl(totalMaoObra)}</span></div>
+    <div class="breakdown-row" style="border-top:1px solid #2a2a2a;padding-top:8px;margin-top:6px"><span><b>Por forma de pagamento</b></span><span></span></div>`;
+  ['dinheiro','credito','debito','pix'].forEach(k=>{
+    if(porPagamento[k] > 0) linhas += `<div class="breakdown-row"><span>${labelPagamento(k)}</span><span>${brl(porPagamento[k])}</span></div>`;
+  });
+  if(porPagamento['null'] > 0) linhas += `<div class="breakdown-row"><span>Não informado</span><span>${brl(porPagamento['null'])}</span></div>`;
+  resumoEl.innerHTML = linhas;
+  document.getElementById('fechar-caixa-total').textContent = brl(totalGeral);
+});
+document.getElementById('fechar-caixa-fechar-btn').addEventListener('click', ()=>{
+  document.getElementById('fechar-caixa-overlay').hidden = true;
+});
+
+/* ============ HISTÓRICO ============ */
+function abrirHistoricoHoje(){
+  const hoje = new Date().toISOString().slice(0,10);
+  document.getElementById('hist-data-de').value = hoje;
+  document.getElementById('hist-data-ate').value = hoje;
+  carregarHistorico();
+}
+document.getElementById('hist-filtrar-btn').addEventListener('click', carregarHistorico);
+document.getElementById('hist-hoje-btn').addEventListener('click', abrirHistoricoHoje);
+
+async function carregarHistorico(){
+  const wrap = document.getElementById('historico-wrap');
+  wrap.innerHTML = '<div class="empty-state">Carregando...</div>';
+  const deStr = document.getElementById('hist-data-de').value;
+  const ateStr = document.getElementById('hist-data-ate').value;
+  let query = db.from('procedimentos')
+    .select('*, procedimento_itens(produto_nome, quantidade, unidade, custo), comandas(forma_pagamento)')
+    .order('realizado_em', { ascending: false }).limit(300);
+  if(deStr) query = query.gte('realizado_em', new Date(deStr + 'T00:00:00').toISOString());
+  if(ateStr) query = query.lte('realizado_em', new Date(ateStr + 'T23:59:59.999').toISOString());
+  const { data, error } = await query;
+  if(error){ wrap.innerHTML = `<div class="empty-state">Erro ao carregar: ${error.message}</div>`; return; }
+  if(!data || data.length === 0){
+    wrap.innerHTML = '<div class="empty-state">Nenhum procedimento registrado nesse período.</div>'; return;
+  }
+  wrap.innerHTML = `
+    <table class="hist-table">
+      <thead><tr><th>Data</th><th>Cliente</th><th>Serviço</th><th>Produtos usados</th><th>Produtos</th><th>Mão de obra</th><th>Pagamento</th><th>Total</th></tr></thead>
+      <tbody>
+        ${data.map(p=>`
+          <tr>
+            <td>${new Date(p.realizado_em).toLocaleDateString('pt-BR')}<br><span class="hist-items">${new Date(p.realizado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span></td>
+            <td>${p.cliente_nome || '—'}</td>
+            <td>${p.servico_nome}</td>
+            <td class="hist-items">${(p.procedimento_itens||[]).map(i=>`${i.produto_nome} — ${i.quantidade}${i.unidade}`).join('<br>') || '—'}</td>
+            <td>${brl(p.custo_produtos)}</td>
+            <td>${brl(p.valor_mao_obra)}</td>
+            <td>${labelPagamento(p.comandas ? p.comandas.forma_pagamento : null)}</td>
+            <td><b>${brl(p.total)}</b></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+/* ============ COMPRAS ============ */
+function abrirListaCompras(){
+  document.getElementById('compras-lista-area').style.display = 'block';
+  document.getElementById('compra-panel').style.display = 'none';
+  carregarCompras();
+}
+async function carregarCompras(){
+  const wrap = document.getElementById('compras-historico-wrap');
+  wrap.innerHTML = '<div class="empty-state">Carregando...</div>';
+  const { data, error } = await db.from('compras')
+    .select('*, compra_itens(produto_nome, quantidade, preco_unitario, valor_total)')
+    .order('criado_em', { ascending: false }).limit(100);
+  if(error){ wrap.innerHTML = `<div class="empty-state">Erro ao carregar: ${error.message}</div>`; return; }
+  if(!data || data.length === 0){
+    wrap.innerHTML = '<div class="empty-state">Nenhuma compra registrada ainda.</div>'; return;
+  }
+  wrap.innerHTML = `
+    <table class="hist-table">
+      <thead><tr><th>Compra</th><th>Data</th><th>Itens recebidos</th><th>Valor total</th></tr></thead>
+      <tbody>
+        ${data.map(c=>`
+          <tr>
+            <td>#${String(c.numero).padStart(2,'0')}</td>
+            <td>${new Date(c.criado_em).toLocaleDateString('pt-BR')}<br><span class="hist-items">${new Date(c.criado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span></td>
+            <td class="hist-items">${(c.compra_itens||[]).map(i=>`${i.produto_nome} — ${i.quantidade} un. × ${brl(i.preco_unitario)} = ${brl(i.valor_total)}`).join('<br>') || '—'}</td>
+            <td><b>${brl(c.total)}</b></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function abrirHistoricoComprasProduto(produtoId){
+  const prod = products.find(p=>p.id === produtoId);
+  document.getElementById('produto-historico-titulo').textContent = 'Histórico de Compras — ' + (prod ? prod.nome : '');
+  const listaEl = document.getElementById('produto-historico-lista');
+  listaEl.innerHTML = '<div class="empty-state">Carregando...</div>';
+  document.getElementById('produto-historico-overlay').hidden = false;
+
+  const { data, error } = await db.from('compra_itens')
+    .select('quantidade, produto_nome, compras(numero, criado_em)')
+    .eq('produto_id', produtoId)
+    .order('id', { ascending: false });
+  if(error){ listaEl.innerHTML = `<div class="empty-state">Erro ao carregar: ${error.message}</div>`; return; }
+  if(!data || data.length === 0){
+    listaEl.innerHTML = '<div class="empty-state">Nenhuma compra registrada para este produto ainda.</div>'; return;
+  }
+  const ordenado = data.slice().sort((a,b)=> new Date(b.compras?.criado_em||0) - new Date(a.compras?.criado_em||0));
+  listaEl.innerHTML = ordenado.map(i => `
+    <div class="notif-item">
+      <span>${new Date(i.compras?.criado_em).toLocaleDateString('pt-BR')} — Compra #${String(i.compras?.numero).padStart(2,'0')}</span>
+      <span style="color:var(--gold);font-weight:600">+${i.quantidade} ${i.produto_nome}</span>
+    </div>`).join('');
+}
+document.getElementById('produto-historico-fechar-btn').addEventListener('click', ()=>{
+  document.getElementById('produto-historico-overlay').hidden = true;
+});
+
+document.getElementById('nova-compra-btn').addEventListener('click', ()=>{
+  compraItens = [{ modo:'novo', produtoId:'', nome:'', peso_unidade:'', unidade:'g', quantidade:'', preco_unitario:'' }];
+  document.getElementById('compras-lista-area').style.display = 'none';
+  document.getElementById('compra-panel').style.display = 'block';
+  renderCompraItens();
+  updateCompraTotal();
+});
+document.getElementById('compra-cancelar-btn').addEventListener('click', abrirListaCompras);
+document.getElementById('compra-add-item-btn').addEventListener('click', ()=>{
+  compraItens.push({ modo:'novo', produtoId:'', nome:'', peso_unidade:'', unidade:'g', quantidade:'', preco_unitario:'' });
+  renderCompraItens();
+});
+
+function renderCompraItens(){
+  const wrap = document.getElementById('compra-itens-wrap');
+  wrap.innerHTML = '';
+  compraItens.forEach((item, idx)=>{
+    const row = document.createElement('div');
+    row.className = 'compra-row';
+    const options = products.map(p=>`<option value="${p.id}" ${p.id===item.produtoId?'selected':''}>${p.nome}</option>`).join('');
+    row.innerHTML = `
+      <div class="linha1">
+        <select class="compra-select">
+          <option value="">+ Novo Produto</option>
+          ${options}
+        </select>
+        ${compraItens.length > 1 ? `<button class="row-remove" type="button">✕</button>` : ''}
+      </div>
+      <div class="novo-fields ${item.modo==='novo' ? 'show' : ''}">
+        <input type="text" class="compra-nome" placeholder="Nome do produto" value="${item.nome||''}">
+        <input type="number" min="0" step="0.01" class="compra-peso" placeholder="Peso/vol. por pote" value="${item.peso_unidade||''}">
+        <select class="compra-unidade">
+          <option value="g" ${item.unidade==='g'?'selected':''}>g</option>
+          <option value="ml" ${item.unidade==='ml'?'selected':''}>ml</option>
+          <option value="kg" ${item.unidade==='kg'?'selected':''}>kg</option>
+          <option value="l" ${item.unidade==='l'?'selected':''}>l</option>
+        </select>
+      </div>
+      <div class="linha2">
+        <div class="mini-field"><label>Quantidade</label><input type="number" min="1" step="1" class="compra-qtd" value="${item.quantidade||''}"></div>
+        <div class="mini-field"><label>Preço Un. (R$)</label><input type="number" min="0" step="0.01" class="compra-preco" value="${item.preco_unitario||''}"></div>
+        <div class="valor-total-box"><label>Valor total</label><div class="valor">${brl((item.quantidade||0) * (item.preco_unitario||0))}</div></div>
+      </div>`;
+
+    const selectEl = row.querySelector('.compra-select');
+    selectEl.addEventListener('change', e=>{
+      const val = e.target.value;
+      if(val === ''){
+        item.modo = 'novo'; item.produtoId = ''; item.nome = ''; item.peso_unidade = ''; item.unidade = 'g';
+      } else {
+        const prod = products.find(p=>p.id === val);
+        item.modo = 'existente'; item.produtoId = val;
+        item.peso_unidade = prod ? prod.peso_unidade : '';
+        item.unidade = prod ? prod.unidade : 'g';
+        item.preco_unitario = prod ? prod.preco : item.preco_unitario;
+      }
+      renderCompraItens(); updateCompraTotal();
+    });
+    row.querySelector('.compra-nome')?.addEventListener('input', e=>{ item.nome = e.target.value; });
+    row.querySelector('.compra-peso')?.addEventListener('input', e=>{ item.peso_unidade = parseFloat(e.target.value); });
+    row.querySelector('.compra-unidade')?.addEventListener('change', e=>{ item.unidade = e.target.value; });
+    row.querySelector('.compra-qtd').addEventListener('input', e=>{
+      item.quantidade = parseFloat(e.target.value); updateRowTotal(row, item); updateCompraTotal();
+    });
+    row.querySelector('.compra-preco').addEventListener('input', e=>{
+      item.preco_unitario = parseFloat(e.target.value); updateRowTotal(row, item); updateCompraTotal();
+    });
+    row.querySelector('.row-remove')?.addEventListener('click', ()=>{
+      compraItens.splice(idx,1); renderCompraItens(); updateCompraTotal();
+    });
+    wrap.appendChild(row);
+  });
+}
+function updateRowTotal(row, item){
+  row.querySelector('.valor-total-box .valor').textContent = brl((item.quantidade||0) * (item.preco_unitario||0));
+}
+function updateCompraTotal(){
+  const total = compraItens.reduce((sum, i) => sum + ((i.quantidade||0) * (i.preco_unitario||0)), 0);
+  document.getElementById('compra-total-value').textContent = brl(total);
+  return total;
+}
+
+document.getElementById('compra-finalizar-btn').addEventListener('click', async ()=>{
+  for(const item of compraItens){
+    if(item.modo === 'novo' && (!item.nome || !item.peso_unidade)){
+      showToast('Preencha nome e peso/volume dos produtos novos.'); return;
+    }
+    if(item.modo === 'existente' && !item.produtoId){
+      showToast('Selecione um produto ou escolha "+ Novo Produto".'); return;
+    }
+    if(!item.quantidade || !item.preco_unitario || item.quantidade <= 0 || item.preco_unitario < 0){
+      showToast('Preencha quantidade e preço unitário de todos os itens.'); return;
+    }
+  }
+  if(compraItens.length === 0){ showToast('Adicione ao menos um item.'); return; }
+
+  const btn = document.getElementById('compra-finalizar-btn');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  const total = updateCompraTotal();
+  const { data: { user } } = await db.auth.getUser();
+
+  const { data: compra, error: errCompra } = await db.from('compras')
+    .insert({ total: total.toFixed(2), realizado_por: user ? user.id : null }).select().single();
+  if(errCompra){
+    btn.disabled = false; btn.textContent = 'Finalizar Compra';
+    showToast('Erro ao registrar compra: ' + errCompra.message); return;
+  }
+
+  const itensParaSalvar = [];
+  for(const item of compraItens){
+    let produtoId = item.produtoId, produtoNome = item.nome;
+    if(item.modo === 'novo'){
+      const { data: novoProd, error: errNovo } = await db.from('produtos').insert({
+        nome: item.nome, preco: item.preco_unitario, peso_unidade: item.peso_unidade, unidade: item.unidade,
+        total_unidades: item.quantidade, potes_fechados: item.quantidade, restante_aberto: 0
+      }).select().single();
+      if(errNovo){ showToast('Erro ao criar produto: ' + errNovo.message); continue; }
+      produtoId = novoProd.id; produtoNome = novoProd.nome;
+    } else {
+      const prod = products.find(p=>p.id === item.produtoId);
+      await db.from('produtos').update({
+        potes_fechados: (prod.potes_fechados||0) + item.quantidade,
+        total_unidades: (prod.total_unidades||0) + item.quantidade,
+        preco: item.preco_unitario
+      }).eq('id', item.produtoId);
+      produtoNome = prod.nome;
+    }
+    itensParaSalvar.push({
+      compra_id: compra.id, produto_id: produtoId, produto_nome: produtoNome,
+      quantidade: item.quantidade, preco_unitario: item.preco_unitario,
+      valor_total: (item.quantidade * item.preco_unitario).toFixed(2)
+    });
+  }
+  await db.from('compra_itens').insert(itensParaSalvar);
+
+  btn.disabled = false; btn.textContent = 'Finalizar Compra';
+  await carregarTudo();
+  showToast('Compra registrada e estoque atualizado.');
+  abrirListaCompras();
+});
+
+/* ============ INIT ============ */
+(async function init(){
+  if(SUPABASE_URL.startsWith('COLE_AQUI')){
+    document.getElementById('login-hint').textContent =
+      'Configure SUPABASE_URL e SUPABASE_ANON_KEY no código antes de usar.';
+    return;
+  }
+  const { data: { session } } = await db.auth.getSession();
+  if(session) await enterApp();
+})();
+</script>
+</body>
+</html>
