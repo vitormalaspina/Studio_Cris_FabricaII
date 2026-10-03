@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#0b0b0b; --panel:#151515; --card:#1a1a1a; --card-border:#2c2c2c;
@@ -680,8 +680,8 @@
    Troque os dois valores abaixo pelos do SEU projeto:
    Painel do Supabase > Settings > API
    ============================================================ */
-const SUPABASE_URL = "https://lkvuekvklztjljtzkjxn.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_WbyjfZFALODVpW8ddA87qA_4ME_bTAN";
+const SUPABASE_URL = "COLE_AQUI_A_URL_DO_PROJETO";
+const SUPABASE_ANON_KEY = "COLE_AQUI_A_CHAVE_ANON_PUBLIC";
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -2114,6 +2114,9 @@ function abrirResumoHoje(){
 async function carregarResumo(deStr, ateStr){
   const totaisEl = document.getElementById('resumo-totais');
   totaisEl.innerHTML = '<div class="empty-state">Carregando...</div>';
+  if(typeof Chart === 'undefined'){
+    showToast('Não foi possível carregar a biblioteca de gráficos. Verifique sua internet e recarregue a página.');
+  }
   const inicio = new Date(deStr + 'T00:00:00').toISOString();
   const fim = new Date(ateStr + 'T23:59:59.999').toISOString();
 
@@ -2143,6 +2146,8 @@ async function carregarResumo(deStr, ateStr){
     <div class="t-card"><div class="lbl">Atendimentos (comandas)</div><div class="val">${comandas.length}</div></div>
     <div class="t-card"><div class="lbl">Clientes únicos</div><div class="val">${clientesUnicos}</div></div>
     <div class="t-card"><div class="lbl">Ticket médio</div><div class="val">${brl(comandas.length ? totalFaturado/comandas.length : 0)}</div></div>`;
+
+  if(typeof Chart === 'undefined') return;
 
   // --- Gráfico 1: fechamento de caixa por forma de pagamento ---
   const caixaLabels = ['Dinheiro','Crédito','Débito','PIX'];
