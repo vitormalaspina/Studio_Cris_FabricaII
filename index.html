@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#0b0b0b; --panel:#151515; --card:#1a1a1a; --card-border:#2c2c2c;
@@ -19,7 +20,7 @@
   html,body{height:100%}
   body{margin:0;background:var(--bg);color:var(--text);font-family:'Poppins',sans-serif;-webkit-font-smoothing:antialiased}
   button{font-family:inherit;cursor:pointer}
-  .app{display:flex;min-height:100vh}
+  .app{display:flex;height:100vh;min-height:100vh}
   .app[hidden]{display:none}
 
   /* ---------- LOGIN ---------- */
@@ -32,7 +33,7 @@
   .login-hint{font-size:11.5px;color:var(--text-dim);text-align:center;margin-top:16px;line-height:1.5}
 
   /* ---------- Sidebar ---------- */
-  .sidebar{width:250px;flex-shrink:0;background:linear-gradient(180deg,#0e0e0e 0%,#070707 100%);border-right:1px solid #1f1f1f;display:flex;flex-direction:column;padding:26px 18px}
+  .sidebar{width:250px;flex-shrink:0;height:100vh;overflow-y:auto;background:linear-gradient(180deg,#0e0e0e 0%,#070707 100%);border-right:1px solid #1f1f1f;display:flex;flex-direction:column;padding:26px 18px}
   .logo{display:flex;flex-direction:column;line-height:.85;margin-bottom:30px;padding:0 6px}
   .logo .top{font-size:13px;letter-spacing:6px;font-weight:600;background:var(--gold-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
   .logo .cris{font-family:'Dancing Script',cursive;font-size:46px;font-weight:700;background:var(--gold-grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:2px}
@@ -71,6 +72,8 @@
   .card .qty-label{font-size:11px;color:var(--text-dim);margin-top:4px}
   .card .qty-val{font-size:11.5px;color:var(--text);font-weight:500}
   .card .qty-val.low{color:#e0a35f}
+  .sync-check-label{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--text-dim);margin:4px 0 2px;cursor:pointer}
+  .sync-check-label input{width:auto;margin:0}
   .card .edit-btn{margin-top:9px;width:100%;padding:6px 0;border-radius:6px;border:1px solid #3a3a3a;background:#242424;color:var(--text);font-size:12px;font-weight:500}
   .card .edit-btn:hover{border-color:var(--gold-dark);color:var(--gold)}
   .card.service .body{text-align:left}
@@ -166,7 +169,8 @@
   ::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px}
 
   /* ---------- Notificação de estoque baixo ---------- */
-  .notif-bell{position:fixed;top:22px;right:34px;z-index:60}
+  .bells-wrap{position:fixed;top:22px;right:34px;z-index:60;display:flex;gap:10px}
+  .notif-bell{position:relative}
   .notif-bell button{width:42px;height:42px;border-radius:50%;background:#1c1c1c;border:1px solid #2f2f2f;display:flex;align-items:center;justify-content:center;color:var(--gold);position:relative}
   .notif-bell button:hover{background:#242424;border-color:var(--gold-dark)}
   .notif-badge{position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px}
@@ -177,6 +181,29 @@
   .notif-item:last-child{border-bottom:none}
   .notif-item b{color:var(--text);font-weight:600}
   .notif-empty{font-size:12.5px;color:var(--text-dim)}
+  .aniv-tabs{display:flex;gap:6px;margin-bottom:10px}
+  .aniv-tab{flex:1;padding:6px;border-radius:6px;border:1px solid #333;background:#232323;color:var(--text-dim);font-size:11.5px;cursor:pointer}
+  .aniv-tab.active{background:var(--gold-grad);color:#1c1502;border:none;font-weight:600}
+  .aniv-cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px;color:var(--text)}
+  .aniv-cal-header button{background:none;border:none;color:var(--gold);font-size:14px;padding:2px 6px}
+  .aniv-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .aniv-cal .dow{font-size:9px;color:var(--text-dim);text-align:center;padding-bottom:2px}
+  .aniv-cal .day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:10.5px;border-radius:5px;background:#1c1c1c;color:var(--text-dim)}
+  .aniv-cal .day.empty{background:transparent}
+  .aniv-cal .day.has-bday{cursor:pointer;background:#2a2210;border:1px solid var(--gold-dark);color:var(--gold);font-weight:600}
+  .aniv-detalhe{margin-top:10px;font-size:12px;color:var(--text-dim);border-top:1px solid #222;padding-top:8px}
+  .aniv-detalhe b{color:var(--text)}
+  .resumo-periodo-btn.active{background:var(--gold-grad);border:none;color:#1c1502;font-weight:600}
+  .resumo-totais{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+  .resumo-totais .t-card{background:var(--panel);border:1px solid #232323;border-radius:10px;padding:16px 20px;min-width:160px}
+  .resumo-totais .t-card .lbl{font-size:11.5px;color:var(--text-dim);margin-bottom:6px}
+  .resumo-totais .t-card .val{font-size:20px;font-weight:700;color:var(--gold)}
+  .resumo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+  .resumo-card{background:var(--panel);border:1px solid #232323;border-radius:12px;padding:18px 20px}
+  .resumo-card h4{margin:0 0 14px;font-size:13.5px;color:var(--text);font-weight:600}
+  .combo-check-row{display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:13px;color:var(--text)}
+  .combo-check-row input{width:auto}
+  .card.combo .recipe-item{font-size:11px;color:var(--text-dim);margin:2px 0}
   .card.low-alert{border-color:#5a3d1a}
   .card .low-badge{position:absolute;top:6px;left:6px;background:rgba(214,150,60,.18);border:1px solid #6b4a1e;color:#e0a35f;font-size:13px;width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center}
 
@@ -231,14 +258,38 @@
 
 <!-- ================= APP ================= -->
 <div class="app" id="app" hidden>
-  <div class="notif-bell" id="notif-bell">
-    <button id="notif-bell-btn" type="button">
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M6 10a6 6 0 1112 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 20a2 2 0 004 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      <span class="notif-badge" id="notif-badge" hidden>0</span>
-    </button>
-    <div class="notif-dropdown" id="notif-dropdown">
-      <h4>Estoque baixo</h4>
-      <div id="notif-list"><div class="notif-empty">Nenhum alerta no momento.</div></div>
+  <div class="bells-wrap" id="bells-wrap">
+    <div class="notif-bell" id="aniversario-bell">
+      <button id="aniversario-bell-btn" type="button">
+        🎂
+        <span class="notif-badge" id="aniversario-badge" hidden>0</span>
+      </button>
+      <div class="notif-dropdown" id="aniversario-dropdown" style="width:260px">
+        <div class="aniv-tabs">
+          <button class="aniv-tab active" id="aniv-tab-hoje" type="button">Hoje</button>
+          <button class="aniv-tab" id="aniv-tab-mes" type="button">Mês</button>
+        </div>
+        <div id="aniv-view-hoje"><div id="aniv-hoje-lista"><div class="notif-empty">Carregando...</div></div></div>
+        <div id="aniv-view-mes" style="display:none">
+          <div class="aniv-cal-header">
+            <button type="button" id="aniv-mes-anterior">‹</button>
+            <span id="aniv-mes-titulo"></span>
+            <button type="button" id="aniv-mes-proximo">›</button>
+          </div>
+          <div class="aniv-cal" id="aniv-cal-grid"></div>
+          <div class="aniv-detalhe" id="aniv-detalhe-dia" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+    <div class="notif-bell" id="notif-bell">
+      <button id="notif-bell-btn" type="button">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M6 10a6 6 0 1112 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 20a2 2 0 004 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span class="notif-badge" id="notif-badge" hidden>0</span>
+      </button>
+      <div class="notif-dropdown" id="notif-dropdown">
+        <h4>Estoque baixo</h4>
+        <div id="notif-list"><div class="notif-empty">Nenhum alerta no momento.</div></div>
+      </div>
     </div>
   </div>
   <aside class="sidebar">
@@ -271,6 +322,10 @@
       <button class="nav-btn" data-page="historico">
         <svg class="ic" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3.5 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         Histórico
+      </button>
+      <button class="nav-btn" data-page="resumo">
+        <svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M4 20V10M11 20V4M18 20v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Resumo
       </button>
     </nav>
     <div class="sidebar-footer">
@@ -320,10 +375,15 @@
 
     <section class="page" id="page-servicos">
       <div class="page-header"><div>
-        <h2 class="page-title">Serviços</h2>
-        <div class="page-subtitle">Procedimentos e os produtos usados em cada um</div>
+        <h2 class="page-title" id="servicos-titulo">Serviços</h2>
+        <div class="page-subtitle" id="servicos-subtitulo">Procedimentos e os produtos usados em cada um</div>
       </div></div>
+      <div class="aniv-tabs" style="max-width:280px;margin-bottom:22px">
+        <button class="aniv-tab active" id="tab-servicos-btn" type="button">Serviços</button>
+        <button class="aniv-tab" id="tab-combos-btn" type="button">Combos</button>
+      </div>
       <div class="grid" id="services-grid"></div>
+      <div class="grid" id="combos-grid" style="display:none"></div>
     </section>
 
     <section class="page" id="page-clientes">
@@ -452,6 +512,44 @@
       </div>
       <div id="historico-wrap"></div>
     </section>
+
+    <section class="page" id="page-resumo">
+      <div class="page-header"><div>
+        <h2 class="page-title">Resumo</h2>
+        <div class="page-subtitle">Estatísticas do salão por período</div>
+      </div></div>
+
+      <div class="hist-filter">
+        <button class="btn btn-small resumo-periodo-btn active" data-periodo="dia">Hoje</button>
+        <button class="btn btn-small resumo-periodo-btn" data-periodo="semana">Esta semana</button>
+        <button class="btn btn-small resumo-periodo-btn" data-periodo="mes">Este mês</button>
+        <button class="btn btn-small resumo-periodo-btn" data-periodo="ano">Este ano</button>
+        <div class="mini-field"><label>De</label><input type="date" id="resumo-data-de"></div>
+        <div class="mini-field"><label>Até</label><input type="date" id="resumo-data-ate"></div>
+        <button class="btn btn-primary btn-small" id="resumo-filtrar-btn">Aplicar</button>
+      </div>
+
+      <div id="resumo-totais" class="resumo-totais"></div>
+
+      <div class="resumo-grid">
+        <div class="resumo-card">
+          <h4>Fechamento de Caixa — por forma de pagamento</h4>
+          <canvas id="chart-caixa" height="220"></canvas>
+        </div>
+        <div class="resumo-card">
+          <h4>Clientes atendidos no período</h4>
+          <canvas id="chart-clientes" height="220"></canvas>
+        </div>
+        <div class="resumo-card">
+          <h4>Produtos × Mão de obra</h4>
+          <canvas id="chart-gastos" height="220"></canvas>
+        </div>
+        <div class="resumo-card">
+          <h4>Serviços mais realizados</h4>
+          <canvas id="chart-servicos" height="220"></canvas>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -466,7 +564,7 @@
     </div>
     <div class="img-upload-label">Adicionar Imagem</div>
     <div class="field"><label>Nome do Produto:</label><input type="text" id="product-name-input" placeholder="Ex: Pó Descolorante"></div>
-    <div class="field"><label>Preço do Pote (R$):</label><input type="number" min="0" step="0.01" id="product-price-input" placeholder="Ex: 100.00"></div>
+    <div class="field"><label>Preço do Pote (R$): <span style="font-weight:400;color:var(--text-dim);font-size:11.5px">— valor de revenda, não precisa ser igual ao que foi pago</span></label><input type="number" min="0" step="0.01" id="product-price-input" placeholder="Ex: 100.00"></div>
     <div class="field-row">
       <div class="field"><label>Peso / Volume por Pote:</label><input type="number" min="0" step="0.01" id="product-weight-input" placeholder="Ex: 450"></div>
       <div class="field"><label>Unidade:</label>
@@ -493,6 +591,23 @@
     <div class="modal-actions">
       <button class="btn" id="service-cancel-btn">Cancelar</button>
       <button class="btn btn-primary" id="service-confirm-btn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COMBO -->
+<div class="overlay" id="combo-modal-overlay" hidden>
+  <div class="modal wide">
+    <h3 id="combo-modal-title">Novo Combo</h3>
+    <div class="field"><label>Nome do Combo:</label><input type="text" id="combo-name-input" placeholder="Ex: Noiva Especial"></div>
+    <label style="font-size:13px;font-weight:500;display:block;margin-bottom:8px">Serviços incluídos:</label>
+    <div id="combo-servicos-checklist" style="max-height:160px;overflow-y:auto;margin-bottom:18px"></div>
+    <label style="font-size:13px;font-weight:500;display:block;margin-bottom:8px">Produtos extras (opcional):</label>
+    <div id="combo-produtos-rows"></div>
+    <button class="add-row-btn" id="combo-add-produto-btn"><span style="font-size:16px">+</span> Adicionar produto extra</button>
+    <div class="modal-actions">
+      <button class="btn" id="combo-cancel-btn">Cancelar</button>
+      <button class="btn btn-primary" id="combo-confirm-btn">Confirmar</button>
     </div>
   </div>
 </div>
@@ -571,7 +686,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_WbyjfZFALODVpW8ddA87qA_4ME_bTAN";
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ============ ESTADO ============ */
-let products = [], services = [], perfil = null;
+let products = [], services = [], combos = [], editingComboId = null, perfil = null;
 let editingProductId = null, editingServiceId = null, productImageData = null;
 let calcSelectedService = null, calcRows = [];
 let clientes = [], editingClientId = null;
@@ -620,11 +735,112 @@ function atualizarAlertas(){
 }
 document.getElementById('notif-bell-btn').addEventListener('click', e=>{
   e.stopPropagation();
+  document.getElementById('aniversario-dropdown').classList.remove('open');
   document.getElementById('notif-dropdown').classList.toggle('open');
 });
 document.addEventListener('click', e=>{
   const bell = document.getElementById('notif-bell');
   if(bell && !bell.contains(e.target)) document.getElementById('notif-dropdown').classList.remove('open');
+  const aniv = document.getElementById('aniversario-bell');
+  if(aniv && !aniv.contains(e.target)) document.getElementById('aniversario-dropdown').classList.remove('open');
+});
+
+/* ============ ANIVERSARIANTES ============ */
+let aniversariantesCache = null;
+let anivMesAtual = new Date();
+
+async function carregarAniversariantes(force){
+  if(aniversariantesCache && !force) return aniversariantesCache;
+  const { data, error } = await db.from('clientes').select('id,nome,data_nascimento').not('data_nascimento','is',null);
+  aniversariantesCache = error ? [] : (data || []);
+  return aniversariantesCache;
+}
+function diaMesOf(dataStr){
+  const d = new Date(dataStr + 'T00:00:00');
+  return { mes: d.getMonth()+1, dia: d.getDate() };
+}
+async function atualizarBadgeAniversario(){
+  const lista = await carregarAniversariantes();
+  const hoje = new Date();
+  const hojeM = hoje.getMonth()+1, hojeD = hoje.getDate();
+  const aniversariantesHoje = lista.filter(c=>{
+    const { mes, dia } = diaMesOf(c.data_nascimento);
+    return mes === hojeM && dia === hojeD;
+  });
+  const badge = document.getElementById('aniversario-badge');
+  if(aniversariantesHoje.length){ badge.hidden = false; badge.textContent = aniversariantesHoje.length; }
+  else badge.hidden = true;
+  return aniversariantesHoje;
+}
+async function renderAnivHoje(){
+  const wrap = document.getElementById('aniv-hoje-lista');
+  wrap.innerHTML = '<div class="notif-empty">Carregando...</div>';
+  const aniversariantesHoje = await atualizarBadgeAniversario();
+  if(aniversariantesHoje.length === 0){
+    wrap.innerHTML = '<div class="notif-empty">Nenhum aniversariante hoje.</div>'; return;
+  }
+  wrap.innerHTML = aniversariantesHoje.map(c=>`<div class="notif-item"><span>🎂 <b>${c.nome}</b></span></div>`).join('');
+}
+async function renderAnivCalendario(){
+  const lista = await carregarAniversariantes();
+  const ano = anivMesAtual.getFullYear(), mes = anivMesAtual.getMonth();
+  document.getElementById('aniv-mes-titulo').textContent =
+    anivMesAtual.toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+  const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
+  const totalDias = new Date(ano, mes+1, 0).getDate();
+  const porDia = {};
+  lista.forEach(c=>{
+    const { mes: m, dia } = diaMesOf(c.data_nascimento);
+    if(m === mes+1){ (porDia[dia] = porDia[dia] || []).push(c.nome); }
+  });
+  const dows = ['D','S','T','Q','Q','S','S'];
+  let html = dows.map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<primeiroDiaSemana;i++) html += `<div class="day empty"></div>`;
+  for(let dia=1; dia<=totalDias; dia++){
+    const nomes = porDia[dia];
+    html += `<div class="day ${nomes ? 'has-bday' : ''}" data-dia="${dia}">${nomes ? '🎂' : dia}</div>`;
+  }
+  document.getElementById('aniv-cal-grid').innerHTML = html;
+  document.getElementById('aniv-detalhe-dia').style.display = 'none';
+  document.querySelectorAll('#aniv-cal-grid .day.has-bday').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const dia = el.dataset.dia;
+      const nomes = porDia[dia];
+      const det = document.getElementById('aniv-detalhe-dia');
+      det.style.display = 'block';
+      det.innerHTML = `<b>Dia ${dia}:</b> ${nomes.join(', ')}`;
+    });
+  });
+}
+document.getElementById('aniversario-bell-btn').addEventListener('click', async e=>{
+  e.stopPropagation();
+  document.getElementById('notif-dropdown').classList.remove('open');
+  const dd = document.getElementById('aniversario-dropdown');
+  dd.classList.toggle('open');
+  if(dd.classList.contains('open')) await renderAnivHoje();
+});
+document.getElementById('aniv-tab-hoje').addEventListener('click', async ()=>{
+  document.getElementById('aniv-tab-hoje').classList.add('active');
+  document.getElementById('aniv-tab-mes').classList.remove('active');
+  document.getElementById('aniv-view-hoje').style.display = 'block';
+  document.getElementById('aniv-view-mes').style.display = 'none';
+  await renderAnivHoje();
+});
+document.getElementById('aniv-tab-mes').addEventListener('click', async ()=>{
+  document.getElementById('aniv-tab-mes').classList.add('active');
+  document.getElementById('aniv-tab-hoje').classList.remove('active');
+  document.getElementById('aniv-view-mes').style.display = 'block';
+  document.getElementById('aniv-view-hoje').style.display = 'none';
+  anivMesAtual = new Date();
+  await renderAnivCalendario();
+});
+document.getElementById('aniv-mes-anterior').addEventListener('click', async ()=>{
+  anivMesAtual = new Date(anivMesAtual.getFullYear(), anivMesAtual.getMonth()-1, 1);
+  await renderAnivCalendario();
+});
+document.getElementById('aniv-mes-proximo').addEventListener('click', async ()=>{
+  anivMesAtual = new Date(anivMesAtual.getFullYear(), anivMesAtual.getMonth()+1, 1);
+  await renderAnivCalendario();
 });
 
 /* ============ LOGIN ============ */
@@ -693,8 +909,8 @@ async function enterApp(){
 
 /* ============ CARGA DE DADOS ============ */
 async function carregarTudo(){
-  await Promise.all([carregarProdutos(), carregarServicos()]);
-  renderProducts(); renderServices(); populateCalcServiceSelect(); atualizarAlertas();
+  await Promise.all([carregarProdutos(), carregarServicos(), carregarCombos()]);
+  renderProducts(); renderServices(); renderCombos(); populateCalcServiceSelect(); atualizarAlertas();
 }
 async function carregarProdutos(){
   const { data, error } = await db.from('produtos').select('*').order('criado_em');
@@ -706,6 +922,12 @@ async function carregarServicos(){
     .select('*, servico_itens(id, produto_id, quantidade)').order('criado_em');
   if(error){ showToast('Erro ao carregar serviços: ' + error.message); return; }
   services = (data || []).map(s => ({ ...s, receita: s.servico_itens || [] }));
+}
+async function carregarCombos(){
+  const { data, error } = await db.from('combos')
+    .select('*, combo_servicos(servico_id), combo_produtos(produto_id, quantidade)').order('criado_em');
+  if(error){ showToast('Erro ao carregar combos: ' + error.message); return; }
+  combos = data || [];
 }
 
 /* ============ NAV ============ */
@@ -720,6 +942,7 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
     if(btn.dataset.page === 'historico') abrirHistoricoHoje();
     if(btn.dataset.page === 'clientes') carregarClientes();
     if(btn.dataset.page === 'comandas-abertas') carregarComandasAbertas();
+    if(btn.dataset.page === 'resumo') abrirResumoHoje();
     if(btn.dataset.page === 'compras') abrirListaCompras();
   });
 });
@@ -740,6 +963,7 @@ function renderProducts(){
       <div class="body">
         <div class="name">${p.nome}</div>
         <div class="row">Preço: <b>${Number(p.preco).toFixed(2).replace('.',',')} R$</b></div>
+        <label class="sync-check-label"><input type="checkbox" class="sync-check" data-id="${p.id}" ${p.sincronizar_preco ? 'checked' : ''}> Puxar preço das compras</label>
         <div class="qty-label">Quantidade:</div>
         <div class="qty-val">${p.potes_fechados} ${p.potes_fechados == 1 ? 'Pote inteiro' : 'Potes inteiros'}</div>
         <div class="qty-val ${semEstoque ? 'low' : ''}">${Number(p.restante_aberto) > 0 ? `Pote aberto: ${Number(p.restante_aberto).toFixed(0)}${p.unidade}` : (semEstoque ? 'Sem estoque' : 'Nenhum pote aberto')}</div>
@@ -759,6 +983,13 @@ function renderProducts(){
     const { error } = await db.from('produtos').delete().eq('id', b.dataset.id);
     if(error){ showToast('Erro ao remover: ' + error.message); return; }
     await carregarTudo(); showToast('Produto removido.');
+  }));
+  grid.querySelectorAll('.sync-check').forEach(chk=>chk.addEventListener('change', async e=>{
+    const prod = products.find(p=>p.id === chk.dataset.id);
+    const { error } = await db.from('produtos').update({ sincronizar_preco: chk.checked }).eq('id', chk.dataset.id);
+    if(error){ showToast('Erro ao salvar: ' + error.message); chk.checked = !chk.checked; return; }
+    if(prod) prod.sincronizar_preco = chk.checked;
+    showToast(chk.checked ? 'Esse produto vai puxar o preço das próximas compras.' : 'Esse produto não vai mais puxar o preço das compras.');
   }));
   grid.querySelectorAll('.edit-btn[data-hist="1"]').forEach(b=>b.addEventListener('click', ()=>{
     abrirHistoricoComprasProduto(b.dataset.id);
@@ -838,7 +1069,7 @@ function renderServices(){
     card.className = 'card service';
     let recipeHtml = (s.receita||[]).map(r=>{
       const prod = products.find(p=>p.id === r.produto_id);
-      return `<div class="recipe-item"><span>${prod ? prod.nome : '(removido)'}</span><span>${r.quantidade}${prod ? prod.unidade : ''}</span></div>`;
+      return `<div class="recipe-item"><span>${prod ? prod.nome : '(removido)'}</span><span>${r.quantidade != null ? r.quantidade + (prod ? prod.unidade : '') : 'sem qtd. padrão'}</span></div>`;
     }).join('');
     if(!recipeHtml) recipeHtml = `<div class="recipe-item"><span>Sem produtos definidos</span></div>`;
     card.innerHTML = `
@@ -867,6 +1098,141 @@ function renderServices(){
   }));
 }
 
+document.getElementById('tab-servicos-btn').addEventListener('click', ()=>{
+  document.getElementById('tab-servicos-btn').classList.add('active');
+  document.getElementById('tab-combos-btn').classList.remove('active');
+  document.getElementById('services-grid').style.display = 'grid';
+  document.getElementById('combos-grid').style.display = 'none';
+  document.getElementById('servicos-titulo').textContent = 'Serviços';
+  document.getElementById('servicos-subtitulo').textContent = 'Procedimentos e os produtos usados em cada um';
+});
+document.getElementById('tab-combos-btn').addEventListener('click', ()=>{
+  document.getElementById('tab-combos-btn').classList.add('active');
+  document.getElementById('tab-servicos-btn').classList.remove('active');
+  document.getElementById('combos-grid').style.display = 'grid';
+  document.getElementById('services-grid').style.display = 'none';
+  document.getElementById('servicos-titulo').textContent = 'Combos';
+  document.getElementById('servicos-subtitulo').textContent = 'Pacotes com vários serviços (e produtos extras) prontos para usar na comanda';
+});
+
+function renderCombos(){
+  const grid = document.getElementById('combos-grid');
+  grid.innerHTML = '';
+  if(combos.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Nenhum combo cadastrado ainda. Use o botão "+" para adicionar.';
+    grid.appendChild(empty);
+  }
+  combos.forEach(c=>{
+    const card = document.createElement('div');
+    card.className = 'card service combo';
+    const servicosHtml = (c.combo_servicos||[]).map(cs=>{
+      const s = services.find(x=>x.id === cs.servico_id);
+      return `<div class="recipe-item">• ${s ? s.nome : '(removido)'}</div>`;
+    }).join('') || `<div class="recipe-item">Nenhum serviço incluído</div>`;
+    const produtosHtml = (c.combo_produtos||[]).map(cp=>{
+      const p = products.find(x=>x.id === cp.produto_id);
+      return `<div class="recipe-item">+ ${p ? p.nome : '(removido)'}${cp.quantidade != null ? ' ('+cp.quantidade+(p?p.unidade:'')+')' : ''}</div>`;
+    }).join('');
+    card.innerHTML = `
+      ${isAdmin() ? `<button class="remove-btn" data-id="${c.id}">✕</button>` : ''}
+      <div class="body" style="padding:14px">
+        <div class="name">🎁 ${c.nome}</div>
+        ${servicosHtml}
+        ${produtosHtml}
+        <button class="edit-btn" data-id="${c.id}">Editar</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+  const addTile = document.createElement('button');
+  addTile.className = 'add-tile'; addTile.textContent = '+';
+  addTile.addEventListener('click', ()=>openComboModal());
+  grid.appendChild(addTile);
+
+  grid.querySelectorAll('.remove-btn').forEach(b=>b.addEventListener('click', async e=>{
+    e.stopPropagation();
+    if(!confirm('Remover este combo?')) return;
+    const { error } = await db.from('combos').delete().eq('id', b.dataset.id);
+    if(error){ showToast('Erro ao remover: ' + error.message); return; }
+    await carregarTudo(); showToast('Combo removido.');
+  }));
+  grid.querySelectorAll('.edit-btn').forEach(b=>b.addEventListener('click', ()=>{
+    openComboModal(combos.find(c=>c.id === b.dataset.id));
+  }));
+}
+
+function openComboModal(combo){
+  editingComboId = combo ? combo.id : null;
+  document.getElementById('combo-modal-title').textContent = combo ? 'Editar Combo' : 'Novo Combo';
+  document.getElementById('combo-name-input').value = combo ? combo.nome : '';
+  const incluidos = combo ? new Set((combo.combo_servicos||[]).map(cs=>cs.servico_id)) : new Set();
+  const checklist = document.getElementById('combo-servicos-checklist');
+  checklist.innerHTML = services.length
+    ? services.map(s=>`
+        <label class="combo-check-row">
+          <input type="checkbox" class="combo-servico-check" value="${s.id}" ${incluidos.has(s.id) ? 'checked' : ''}>
+          ${s.nome}
+        </label>`).join('')
+    : '<div class="empty-state">Cadastre um serviço primeiro.</div>';
+  const rowsWrap = document.getElementById('combo-produtos-rows');
+  rowsWrap.innerHTML = '';
+  const extras = combo ? (combo.combo_produtos||[]).slice() : [];
+  extras.forEach(cp => addComboProdutoRow(cp.produto_id, cp.quantidade));
+  document.getElementById('combo-modal-overlay').hidden = false;
+}
+function addComboProdutoRow(produtoId, quantidade){
+  const wrap = document.getElementById('combo-produtos-rows');
+  const row = document.createElement('div');
+  row.className = 'recipe-row';
+  const options = products.map(p=>`<option value="${p.id}" ${p.id===produtoId?'selected':''}>${p.nome}</option>`).join('');
+  row.innerHTML = `
+    <select class="combo-produto-select"><option value="">Selecionar Produto</option>${options}</select>
+    <input type="number" min="0" step="0.01" class="combo-produto-qtd" placeholder="Qtd. (opcional)" value="${quantidade ?? ''}">
+    <span class="unit-badge combo-produto-unit">${(products.find(p=>p.id===produtoId)||{}).unidade || ''}</span>
+    <button class="row-remove" type="button">✕</button>`;
+  row.querySelector('.combo-produto-select').addEventListener('change', e=>{
+    const p = products.find(x=>x.id === e.target.value);
+    row.querySelector('.combo-produto-unit').textContent = p ? p.unidade : '';
+  });
+  row.querySelector('.row-remove').addEventListener('click', ()=>row.remove());
+  wrap.appendChild(row);
+}
+document.getElementById('combo-add-produto-btn').addEventListener('click', ()=>addComboProdutoRow('',''));
+document.getElementById('combo-cancel-btn').addEventListener('click', ()=>{
+  document.getElementById('combo-modal-overlay').hidden = true;
+});
+document.getElementById('combo-confirm-btn').addEventListener('click', async ()=>{
+  const nome = document.getElementById('combo-name-input').value.trim();
+  if(!nome){ showToast('Informe o nome do combo.'); return; }
+  const servicosSelecionados = Array.from(document.querySelectorAll('.combo-servico-check:checked')).map(c=>c.value);
+  if(servicosSelecionados.length === 0){ showToast('Selecione ao menos um serviço para o combo.'); return; }
+  const produtosExtras = [];
+  document.querySelectorAll('#combo-produtos-rows .recipe-row').forEach(row=>{
+    const produto_id = row.querySelector('.combo-produto-select').value;
+    const qtdRaw = row.querySelector('.combo-produto-qtd').value;
+    if(produto_id) produtosExtras.push({ produto_id, quantidade: qtdRaw === '' ? null : parseFloat(qtdRaw) });
+  });
+
+  let comboId = editingComboId;
+  if(comboId){
+    const { error } = await db.from('combos').update({ nome }).eq('id', comboId);
+    if(error){ showToast('Erro ao salvar: ' + error.message); return; }
+    await db.from('combo_servicos').delete().eq('combo_id', comboId);
+    await db.from('combo_produtos').delete().eq('combo_id', comboId);
+  } else {
+    const { data, error } = await db.from('combos').insert({ nome }).select().single();
+    if(error){ showToast('Erro ao salvar: ' + error.message); return; }
+    comboId = data.id;
+  }
+  await db.from('combo_servicos').insert(servicosSelecionados.map(sid => ({ combo_id: comboId, servico_id: sid })));
+  if(produtosExtras.length){
+    await db.from('combo_produtos').insert(produtosExtras.map(pe => ({ combo_id: comboId, produto_id: pe.produto_id, quantidade: pe.quantidade })));
+  }
+  document.getElementById('combo-modal-overlay').hidden = true;
+  await carregarTudo(); showToast('Combo salvo com sucesso.');
+});
+
 function openServiceModal(service){
   editingServiceId = service ? service.id : null;
   document.getElementById('service-modal-title').textContent = service ? 'Editar Serviço' : 'Novo Serviço';
@@ -884,7 +1250,7 @@ function addServiceRecipeRow(produtoId, quantidade){
   const options = products.map(p=>`<option value="${p.id}" ${p.id===produtoId?'selected':''}>${p.nome}</option>`).join('');
   row.innerHTML = `
     <select class="svc-product-select"><option value="">Selecionar Produto</option>${options}</select>
-    <input type="number" min="0" step="0.01" class="svc-amount-input" placeholder="Qtd." value="${quantidade ?? ''}">
+    <input type="number" min="0" step="0.01" class="svc-amount-input" placeholder="Qtd. padrão (opcional)" value="${quantidade ?? ''}">
     <span class="unit-badge svc-unit-badge">${(products.find(p=>p.id===produtoId)||{}).unidade || ''}</span>
     <button class="row-remove" type="button">✕</button>`;
   row.querySelector('.svc-product-select').addEventListener('change', e=>{
@@ -904,8 +1270,9 @@ document.getElementById('service-confirm-btn').addEventListener('click', async (
   const receita = [];
   document.querySelectorAll('#service-recipe-rows .recipe-row').forEach(row=>{
     const produto_id = row.querySelector('.svc-product-select').value;
-    const quantidade = parseFloat(row.querySelector('.svc-amount-input').value);
-    if(produto_id && !isNaN(quantidade)) receita.push({produto_id, quantidade});
+    const qtdRaw = row.querySelector('.svc-amount-input').value;
+    const quantidade = qtdRaw === '' ? null : parseFloat(qtdRaw);
+    if(produto_id) receita.push({produto_id, quantidade});
   });
 
   let servicoId = editingServiceId;
@@ -943,7 +1310,7 @@ document.getElementById('calc-continue-btn').addEventListener('click', ()=>{
   const service = services.find(s=>s.id === document.getElementById('calc-service-select').value);
   if(!service){ showToast('Cadastre um serviço primeiro.'); return; }
   calcSelectedService = service;
-  calcRows = (service.receita||[]).map(r=>({productId: r.produto_id, amount: Number(r.quantidade)}));
+  calcRows = (service.receita||[]).map(r=>({productId: r.produto_id, amount: r.quantidade != null ? Number(r.quantidade) : ''}));
   if(calcRows.length === 0) calcRows.push({productId:'', amount:''});
   document.getElementById('calc-service-tag').textContent = service.nome;
   document.getElementById('calc-labor-input').value = '';
@@ -1244,8 +1611,10 @@ document.getElementById('pagamento-confirm-btn').addEventListener('click', async
 document.getElementById('comanda-add-proc-btn').addEventListener('click', ()=>{
   document.getElementById('comanda-aberta-panel').style.display = 'none';
   const sel = document.getElementById('comanda-service-select');
-  sel.innerHTML = services.length
-    ? services.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('')
+  const opcoesServicos = services.map(s=>`<option value="servico:${s.id}">${s.nome}</option>`).join('');
+  const opcoesCombos = combos.map(c=>`<option value="combo:${c.id}">🎁 ${c.nome}</option>`).join('');
+  sel.innerHTML = (opcoesServicos || opcoesCombos)
+    ? `${opcoesServicos ? `<optgroup label="Serviços">${opcoesServicos}</optgroup>` : ''}${opcoesCombos ? `<optgroup label="Combos">${opcoesCombos}</optgroup>` : ''}`
     : `<option value="">Nenhum serviço cadastrado</option>`;
   document.getElementById('comanda-calc-step1').style.display = 'block';
 });
@@ -1258,12 +1627,32 @@ document.getElementById('comanda-calc-back-btn').addEventListener('click', ()=>{
   document.getElementById('comanda-calc-step1').style.display = 'block';
 });
 document.getElementById('comanda-calc-continue-btn').addEventListener('click', ()=>{
-  const service = services.find(s=>s.id === document.getElementById('comanda-service-select').value);
-  if(!service){ showToast('Cadastre um serviço primeiro.'); return; }
-  comandaSelectedService = service;
-  comandaCalcRows = (service.receita||[]).map(r=>({productId: r.produto_id, amount: Number(r.quantidade)}));
+  const valor = document.getElementById('comanda-service-select').value;
+  if(!valor){ showToast('Cadastre um serviço ou combo primeiro.'); return; }
+  const [tipo, id] = valor.split(':');
+
+  if(tipo === 'combo'){
+    const combo = combos.find(c=>c.id === id);
+    if(!combo){ showToast('Combo não encontrado.'); return; }
+    comandaSelectedService = { id: null, nome: '🎁 ' + combo.nome };
+    comandaCalcRows = [];
+    (combo.combo_servicos||[]).forEach(cs=>{
+      const s = services.find(x=>x.id === cs.servico_id);
+      (s?.receita||[]).forEach(r=>{
+        comandaCalcRows.push({ productId: r.produto_id, amount: r.quantidade != null ? Number(r.quantidade) : '' });
+      });
+    });
+    (combo.combo_produtos||[]).forEach(cp=>{
+      comandaCalcRows.push({ productId: cp.produto_id, amount: cp.quantidade != null ? Number(cp.quantidade) : '' });
+    });
+  } else {
+    const service = services.find(s=>s.id === id);
+    if(!service){ showToast('Serviço não encontrado.'); return; }
+    comandaSelectedService = service;
+    comandaCalcRows = (service.receita||[]).map(r=>({productId: r.produto_id, amount: r.quantidade != null ? Number(r.quantidade) : ''}));
+  }
   if(comandaCalcRows.length === 0) comandaCalcRows.push({productId:'', amount:''});
-  document.getElementById('comanda-service-tag').textContent = service.nome;
+  document.getElementById('comanda-service-tag').textContent = comandaSelectedService.nome;
   document.getElementById('comanda-labor-input').value = '';
   renderComandaCalcRows(); updateComandaCalcTotal();
   document.getElementById('comanda-calc-step1').style.display = 'none';
@@ -1455,33 +1844,29 @@ async function carregarHistorico(){
   wrap.innerHTML = '<div class="empty-state">Carregando...</div>';
   const deStr = document.getElementById('hist-data-de').value;
   const ateStr = document.getElementById('hist-data-ate').value;
-  let query = db.from('procedimentos')
-    .select('*, procedimento_itens(produto_nome, quantidade, unidade, custo), comandas(forma_pagamento)')
-    .order('realizado_em', { ascending: false }).limit(300);
-  if(deStr) query = query.gte('realizado_em', new Date(deStr + 'T00:00:00').toISOString());
-  if(ateStr) query = query.lte('realizado_em', new Date(ateStr + 'T23:59:59.999').toISOString());
+  let query = db.from('comandas')
+    .select('*, clientes(nome), procedimentos(servico_nome, custo_produtos, valor_mao_obra, total, realizado_em, procedimento_itens(produto_nome, quantidade, unidade))')
+    .eq('status', 'fechada')
+    .order('fechada_em', { ascending: false }).limit(200);
+  if(deStr) query = query.gte('fechada_em', new Date(deStr + 'T00:00:00').toISOString());
+  if(ateStr) query = query.lte('fechada_em', new Date(ateStr + 'T23:59:59.999').toISOString());
   const { data, error } = await query;
   if(error){ wrap.innerHTML = `<div class="empty-state">Erro ao carregar: ${error.message}</div>`; return; }
   if(!data || data.length === 0){
-    wrap.innerHTML = '<div class="empty-state">Nenhum procedimento registrado nesse período.</div>'; return;
+    wrap.innerHTML = '<div class="empty-state">Nenhuma comanda fechada nesse período.</div>'; return;
   }
-  wrap.innerHTML = `
-    <table class="hist-table">
-      <thead><tr><th>Data</th><th>Cliente</th><th>Serviço</th><th>Produtos usados</th><th>Produtos</th><th>Mão de obra</th><th>Pagamento</th><th>Total</th></tr></thead>
-      <tbody>
-        ${data.map(p=>`
-          <tr>
-            <td>${new Date(p.realizado_em).toLocaleDateString('pt-BR')}<br><span class="hist-items">${new Date(p.realizado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span></td>
-            <td>${p.cliente_nome || '—'}</td>
-            <td>${p.servico_nome}</td>
-            <td class="hist-items">${(p.procedimento_itens||[]).map(i=>`${i.produto_nome} — ${i.quantidade}${i.unidade}`).join('<br>') || '—'}</td>
-            <td>${brl(p.custo_produtos)}</td>
-            <td>${brl(p.valor_mao_obra)}</td>
-            <td>${labelPagamento(p.comandas ? p.comandas.forma_pagamento : null)}</td>
-            <td><b>${brl(p.total)}</b></td>
-          </tr>`).join('')}
-      </tbody>
-    </table>`;
+  wrap.innerHTML = data.map(c=>`
+    <div class="client-history-item">
+      <div class="chi-top">
+        <span><b>${c.clientes ? c.clientes.nome : '—'}</b> — ${new Date(c.fechada_em).toLocaleDateString('pt-BR')} <span class="hist-items">${new Date(c.fechada_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span> — <span style="color:var(--gold)">${labelPagamento(c.forma_pagamento)}</span></span>
+        <b>Total: ${brl(c.total)}</b>
+      </div>
+      ${(c.procedimentos||[]).map(p=>`
+        <div class="comanda-item-row">
+          <div class="desc"><b>${p.servico_nome}</b><br>${(p.procedimento_itens||[]).map(i=>`${i.produto_nome} (${i.quantidade}${i.unidade})`).join(', ') || '—'} · Produtos: ${brl(p.custo_produtos)} · Mão de obra: ${brl(p.valor_mao_obra)}</div>
+          <div class="val">${brl(p.total)}</div>
+        </div>`).join('')}
+    </div>`).join('');
 }
 
 /* ============ COMPRAS ============ */
@@ -1581,7 +1966,7 @@ function renderCompraItens(){
       </div>
       <div class="linha2">
         <div class="mini-field"><label>Quantidade</label><input type="number" min="1" step="1" class="compra-qtd" value="${item.quantidade||''}"></div>
-        <div class="mini-field"><label>Preço Un. (R$)</label><input type="number" min="0" step="0.01" class="compra-preco" value="${item.preco_unitario||''}"></div>
+        <div class="mini-field"><label>Preço pago Un. (R$)</label><input type="number" min="0" step="0.01" class="compra-preco" value="${item.preco_unitario||''}"></div>
         <div class="valor-total-box"><label>Valor total</label><div class="valor">${brl((item.quantidade||0) * (item.preco_unitario||0))}</div></div>
       </div>`;
 
@@ -1595,7 +1980,6 @@ function renderCompraItens(){
         item.modo = 'existente'; item.produtoId = val;
         item.peso_unidade = prod ? prod.peso_unidade : '';
         item.unidade = prod ? prod.unidade : 'g';
-        item.preco_unitario = prod ? prod.preco : item.preco_unitario;
       }
       renderCompraItens(); updateCompraTotal();
     });
@@ -1661,11 +2045,12 @@ document.getElementById('compra-finalizar-btn').addEventListener('click', async 
       produtoId = novoProd.id; produtoNome = novoProd.nome;
     } else {
       const prod = products.find(p=>p.id === item.produtoId);
-      await db.from('produtos').update({
+      const atualizacao = {
         potes_fechados: (prod.potes_fechados||0) + item.quantidade,
-        total_unidades: (prod.total_unidades||0) + item.quantidade,
-        preco: item.preco_unitario
-      }).eq('id', item.produtoId);
+        total_unidades: (prod.total_unidades||0) + item.quantidade
+      };
+      if(prod.sincronizar_preco) atualizacao.preco = item.preco_unitario;
+      await db.from('produtos').update(atualizacao).eq('id', item.produtoId);
       produtoNome = prod.nome;
     }
     itensParaSalvar.push({
@@ -1681,6 +2066,154 @@ document.getElementById('compra-finalizar-btn').addEventListener('click', async 
   showToast('Compra registrada e estoque atualizado.');
   abrirListaCompras();
 });
+
+/* ============ RESUMO ============ */
+let chartCaixa = null, chartClientes = null, chartGastos = null, chartServicos = null;
+const CHART_COLORS = ['#d4af37','#8a6d1f','#e0a35f','#b9b3a6','#5f7fd4','#9d5fd4'];
+
+function isoDate(d){ return d.toISOString().slice(0,10); }
+function calcularIntervaloPeriodo(periodo){
+  const hoje = new Date();
+  let de = new Date(hoje), ate = new Date(hoje);
+  if(periodo === 'semana'){
+    const diaSemana = hoje.getDay() || 7;
+    de = new Date(hoje); de.setDate(hoje.getDate() - diaSemana + 1);
+  } else if(periodo === 'mes'){
+    de = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  } else if(periodo === 'ano'){
+    de = new Date(hoje.getFullYear(), 0, 1);
+  }
+  return { de: isoDate(de), ate: isoDate(ate) };
+}
+document.querySelectorAll('.resumo-periodo-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.resumo-periodo-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const { de, ate } = calcularIntervaloPeriodo(btn.dataset.periodo);
+    document.getElementById('resumo-data-de').value = de;
+    document.getElementById('resumo-data-ate').value = ate;
+    carregarResumo(de, ate);
+  });
+});
+document.getElementById('resumo-filtrar-btn').addEventListener('click', ()=>{
+  document.querySelectorAll('.resumo-periodo-btn').forEach(b=>b.classList.remove('active'));
+  const de = document.getElementById('resumo-data-de').value;
+  const ate = document.getElementById('resumo-data-ate').value;
+  if(!de || !ate){ showToast('Selecione as duas datas.'); return; }
+  carregarResumo(de, ate);
+});
+function abrirResumoHoje(){
+  document.querySelectorAll('.resumo-periodo-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.resumo-periodo-btn[data-periodo="dia"]').classList.add('active');
+  const { de, ate } = calcularIntervaloPeriodo('dia');
+  document.getElementById('resumo-data-de').value = de;
+  document.getElementById('resumo-data-ate').value = ate;
+  carregarResumo(de, ate);
+}
+
+async function carregarResumo(deStr, ateStr){
+  const totaisEl = document.getElementById('resumo-totais');
+  totaisEl.innerHTML = '<div class="empty-state">Carregando...</div>';
+  const inicio = new Date(deStr + 'T00:00:00').toISOString();
+  const fim = new Date(ateStr + 'T23:59:59.999').toISOString();
+
+  const { data, error } = await db.from('comandas')
+    .select('total, forma_pagamento, fechada_em, cliente_id, procedimentos(servico_nome, custo_produtos, valor_mao_obra, total)')
+    .eq('status', 'fechada')
+    .gte('fechada_em', inicio).lte('fechada_em', fim);
+  if(error){ totaisEl.innerHTML = `<div class="empty-state">Erro ao carregar: ${error.message}</div>`; return; }
+
+  const comandas = data || [];
+  const totalFaturado = comandas.reduce((s,c)=>s+Number(c.total), 0);
+  const clientesUnicos = new Set(comandas.map(c=>c.cliente_id)).size;
+  let totalProdutos = 0, totalMaoObra = 0;
+  const porPagamento = { dinheiro:0, credito:0, debito:0, pix:0 };
+  const porServico = {};
+  comandas.forEach(c=>{
+    if(c.forma_pagamento) porPagamento[c.forma_pagamento] = (porPagamento[c.forma_pagamento]||0) + Number(c.total);
+    (c.procedimentos||[]).forEach(p=>{
+      totalProdutos += Number(p.custo_produtos);
+      totalMaoObra += Number(p.valor_mao_obra);
+      porServico[p.servico_nome] = (porServico[p.servico_nome]||0) + 1;
+    });
+  });
+
+  totaisEl.innerHTML = `
+    <div class="t-card"><div class="lbl">Total faturado</div><div class="val">${brl(totalFaturado)}</div></div>
+    <div class="t-card"><div class="lbl">Atendimentos (comandas)</div><div class="val">${comandas.length}</div></div>
+    <div class="t-card"><div class="lbl">Clientes únicos</div><div class="val">${clientesUnicos}</div></div>
+    <div class="t-card"><div class="lbl">Ticket médio</div><div class="val">${brl(comandas.length ? totalFaturado/comandas.length : 0)}</div></div>`;
+
+  // --- Gráfico 1: fechamento de caixa por forma de pagamento ---
+  const caixaLabels = ['Dinheiro','Crédito','Débito','PIX'];
+  const caixaValues = [porPagamento.dinheiro, porPagamento.credito, porPagamento.debito, porPagamento.pix];
+  if(chartCaixa) chartCaixa.destroy();
+  chartCaixa = new Chart(document.getElementById('chart-caixa'), {
+    type: 'bar',
+    data: { labels: caixaLabels, datasets: [{ data: caixaValues, backgroundColor: CHART_COLORS, borderRadius: 6 }] },
+    options: chartOptionsBase('R$')
+  });
+
+  // --- Gráfico 2: clientes atendidos ao longo do tempo ---
+  const spanDias = Math.max(1, Math.round((new Date(ateStr) - new Date(deStr)) / 86400000));
+  const granularidade = spanDias <= 31 ? 'dia' : spanDias <= 180 ? 'semana' : 'mes';
+  const buckets = {};
+  comandas.forEach(c=>{
+    const d = new Date(c.fechada_em);
+    let chave;
+    if(granularidade === 'dia') chave = isoDate(d);
+    else if(granularidade === 'semana'){
+      const diaSemana = d.getDay() || 7;
+      const seg = new Date(d); seg.setDate(d.getDate() - diaSemana + 1);
+      chave = isoDate(seg);
+    } else chave = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    (buckets[chave] = buckets[chave] || new Set()).add(c.cliente_id);
+  });
+  const chavesOrdenadas = Object.keys(buckets).sort();
+  const formatarLabel = chave => {
+    if(granularidade === 'mes'){
+      const [a,m] = chave.split('-');
+      return new Date(a, m-1, 1).toLocaleDateString('pt-BR', { month:'short', year:'2-digit' });
+    }
+    return new Date(chave + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+  };
+  if(chartClientes) chartClientes.destroy();
+  chartClientes = new Chart(document.getElementById('chart-clientes'), {
+    type: 'line',
+    data: {
+      labels: chavesOrdenadas.map(formatarLabel),
+      datasets: [{ data: chavesOrdenadas.map(k=>buckets[k].size), borderColor: '#d4af37', backgroundColor: 'rgba(212,175,55,.15)', fill: true, tension: .3 }]
+    },
+    options: chartOptionsBase('clientes')
+  });
+
+  // --- Gráfico 3: produtos x mão de obra ---
+  if(chartGastos) chartGastos.destroy();
+  chartGastos = new Chart(document.getElementById('chart-gastos'), {
+    type: 'bar',
+    data: { labels: ['Produtos','Mão de obra'], datasets: [{ data: [totalProdutos, totalMaoObra], backgroundColor: ['#8a6d1f','#d4af37'], borderRadius: 6 }] },
+    options: chartOptionsBase('R$')
+  });
+
+  // --- Gráfico 4: serviços mais realizados ---
+  const topServicos = Object.entries(porServico).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(chartServicos) chartServicos.destroy();
+  chartServicos = new Chart(document.getElementById('chart-servicos'), {
+    type: 'bar',
+    data: { labels: topServicos.map(s=>s[0]), datasets: [{ data: topServicos.map(s=>s[1]), backgroundColor: CHART_COLORS, borderRadius: 6 }] },
+    options: { ...chartOptionsBase('vezes'), indexAxis: 'y' }
+  });
+}
+function chartOptionsBase(sufixo){
+  return {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#b9b3a6' }, grid: { color: '#222' } },
+      y: { ticks: { color: '#b9b3a6' }, grid: { color: '#222' }, beginAtZero: true }
+    }
+  };
+}
 
 /* ============ INIT ============ */
 (async function init(){
